@@ -5,10 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Topos - 公共議題審議與觀點探索平台</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+TC:wght@700;900&family=Space+Grotesk:wght@500;700;900&display=swap" rel="stylesheet">
     <!-- Google Identity Services for One Tap / Sign In with Google -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      @keyframes topos-pulse {
+        0%, 100% { opacity: 1; transform: translateY(0); }
+        50% { opacity: 0.6; transform: translateY(-1px); }
+      }
+    </style>
   </head>
-  <body class="bg-slate-900 text-slate-100 min-h-screen">
+  <body style="margin: 0; background-color: #FFF7E4; background-image: linear-gradient(90deg, rgba(16,12,10,.04) 1px, transparent 1px), linear-gradient(rgba(16,12,10,.04) 1px, transparent 1px); background-size: 96px 96px; font-family: 'Space Grotesk', 'Noto Sans TC', system-ui, sans-serif; color: #100C0A; min-height: 100vh;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

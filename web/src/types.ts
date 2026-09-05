@@ -10,8 +10,17 @@ export interface Topic {
 export interface Crux {
   title: string;
   description: string;
-  proPoints: string[];
-  conPoints: string[];
+  proPoints?: string[];
+  conPoints?: string[];
+  pro?: string[];
+  con?: string[];
+}
+
+export interface HistorySession {
+  id: string;
+  dateLabel: string;
+  firstQuestion: string;
+  messages: ChatMessage[];
 }
 
 export interface Citation {
