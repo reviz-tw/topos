@@ -1,0 +1,52 @@
+steps:
+  # 1. Build the Go Server container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/topos/topos-server:$COMMIT_SHA'
+      - '-t'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/topos/topos-server:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+    id: 'build-image'
+
+  # 2. Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/topos/topos-server'
+    id: 'push-image'
+
+  # 3. Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME'
+      - '--image'
+      - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/topos/topos-server:$COMMIT_SHA'
+      - '--region'
+      - '$_LOCATION'
+      - '--platform'
+      - 'managed'
+      - '--no-invoker-iam-check'
+      - '--set-env-vars'
+      - 'GCP_PROJECT_ID=$PROJECT_ID,CLOUDFLARE_ACCOUNT_ID=$_CLOUDFLARE_ACCOUNT_ID,VERTEX_SEARCH_DATASTORE_ID=$_VERTEX_SEARCH_DATASTORE_ID'
+    id: 'deploy-cloud-run'
+
+images:
+  - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/topos/topos-server:$COMMIT_SHA'
+  - '$_LOCATION-docker.pkg.dev/$PROJECT_ID/topos/topos-server:latest'
+
+substitutions:
+  _LOCATION: 'asia-east1'
+  _SERVICE_NAME: 'topos-server'
+  _CLOUDFLARE_ACCOUNT_ID: ''
+  _VERTEX_SEARCH_DATASTORE_ID: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY
