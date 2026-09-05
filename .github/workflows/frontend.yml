@@ -29,8 +29,8 @@ jobs:
 
       - name: Build Frontend
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://topos-server-un73ay33jq-de.a.run.app' }}
-          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID || '' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://topos-server-943588706060.asia-east1.run.app' }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID || '943588706060-5pt49hd4vct9soc2puh2rah2t3fp1rav.apps.googleusercontent.com' }}
         run: npm --prefix web run build
 
       - name: Deploy to Cloudflare Pages

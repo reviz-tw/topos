@@ -145,6 +145,23 @@ export default function App() {
       return;
     }
 
+    const renderBtn = () => {
+      const btnSlot = document.getElementById('google-btn-slot');
+      if (btnSlot && window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.renderButton(btnSlot, {
+            theme: 'outline',
+            size: 'medium',
+            shape: 'pill',
+            text: 'signin_with',
+            locale: 'zh-TW',
+          });
+        } catch (e) {
+          console.warn('Failed to render Google button:', e);
+        }
+      }
+    };
+
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
         window.google.accounts.id.initialize({
@@ -153,18 +170,13 @@ export default function App() {
           auto_select: false,
         });
 
-        const btnSlot = document.getElementById('google-btn-slot');
-        if (btnSlot) {
-          window.google.accounts.id.renderButton(btnSlot, {
-            theme: 'outline',
-            size: 'medium',
-            shape: 'pill',
-            text: 'signin_with',
-            locale: 'zh-TW',
-          });
-        }
+        renderBtn();
+        setTimeout(renderBtn, 100);
+        setTimeout(renderBtn, 400);
 
-        window.google.accounts.id.prompt();
+        if (!user) {
+          window.google.accounts.id.prompt();
+        }
       }
     };
 
@@ -176,10 +188,10 @@ export default function App() {
           initGoogle();
           clearInterval(timer);
         }
-      }, 500);
+      }, 300);
       return () => clearInterval(timer);
     }
-  }, [googleClientId]);
+  }, [googleClientId, user]);
 
   // Actions
   const loginGuest = (): UserProfile => {
