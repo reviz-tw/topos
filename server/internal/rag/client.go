@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,15 +31,19 @@ type Engine struct {
 func NewEngine() *Engine {
 	model := os.Getenv("CLOUDFLARE_MODEL")
 	if model == "" {
-		// Default to Google's Gemma on Cloudflare or Qwen 2.5
 		model = "@cf/google/gemma-2-9b-it"
+	}
+
+	projectID := os.Getenv("GCP_PROJECT_ID")
+	if projectID == "" {
+		projectID = "elix-498805"
 	}
 
 	e := &Engine{
 		cloudflareAccountID: os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
 		cloudflareAPIToken:  os.Getenv("CLOUDFLARE_API_TOKEN"),
 		cloudflareModel:     model,
-		gcpProjectID:        os.Getenv("GCP_PROJECT_ID"),
+		gcpProjectID:        projectID,
 		vertexDataStoreID:   os.Getenv("VERTEX_SEARCH_DATASTORE_ID"),
 		httpClient:          &http.Client{Timeout: 60 * time.Second},
 		localDebatesCache:   make(map[string]string),
@@ -52,6 +58,7 @@ func (e *Engine) loadLocalDebates() {
 		"../../data/debates/nuclear4",
 		"data/debates/nuclear4",
 		"/app/data/debates/nuclear4",
+		"./data/debates/nuclear4",
 	}
 
 	for _, dir := range candidates {
@@ -65,6 +72,7 @@ func (e *Engine) loadLocalDebates() {
 					}
 				}
 			}
+			log.Printf("[RAG] Loaded %d debate transcript files from %s", len(e.localDebatesCache), dir)
 			break
 		}
 	}
@@ -78,78 +86,235 @@ func (e *Engine) Deliberate(ctx context.Context, topicID string, history []model
 
 	lastMsg := history[len(history)-1].Content
 
-	// 1. Retrieve context (from Vertex AI Search or local debate transcripts)
-	relevantExcerpts := e.retrieveContext(lastMsg)
+	// 1. Retrieve context & citations from debate transcripts
+	relevantExcerpts, citations := e.retrieveContextAndCitations(lastMsg)
 
-	// 2. Build Deliberation System Prompt (Emulating Talk to the City)
-	systemPrompt := `你是由 Topos 驅動的公眾審議引導助手（Topos Deliberative Facilitator）。
-你的目標是協助公民深入理解公共議題，呈現多元且平衡的事實與論述，絕不預設立場。
+	// 2. Build Deliberation System Prompt
+	systemPrompt := fmt.Sprintf(`你是由 Topos 驅動的公眾審議引導助手（Topos Deliberative Facilitator）。
+目前公民正在探討的公共議題是【%s】。
+你的核心目標是協助公民深入理解公共議題，呈現多元且平衡的事實與論述，促進建設性對話，絕不預設立場。
 
-你的核心任務：
-1. 【平衡呈現】：針對使用者的問題或看法，清楚梳理支持方與反對方的核心論據與背後價值觀（例如：環境安全 vs. 能源穩定）。
-2. 【事實溯源】：引用提供的公聽會/公投辯論逐字稿中的真實論述，說明誰（如：黃士修、許永輝、曾文生、苗博雅等）提出了哪些觀點。
-3. 【深化探討】：以客觀中立的口吻提出 1~2 個具有反思性的延伸問題，幫助使用者釐清自己的核心考量。
+【引導原則】：
+1. 若使用者的提問或觀點與當前議題（例如核四重啟、地質耐震、能源轉型、公投或憲政體制等）相關：
+   - 【平衡呈現】：清楚梳理正反雙方的核心論據與背後價值觀（例如：環境風險 vs. 供電穩定；三權分立 vs. 五權憲法）。
+   - 【事實溯源】：若參考資料中有具體正反方發言，請務必指名誰（如黃士修、許永輝、曾文生、苗博雅等）提出了何種論點與數據依據。
+   - 【深化思辨】：在回答末尾以中立客觀的口吻，提出 1~2 個值得反思的延伸爭點，引導公民進一步思考。
+2. 若使用者的提問與當前探討的公共議題無關（例如詢問天氣、個人日常、聊天問候等）：
+   - 請以友善、自然的口吻簡短回應使用者的問題，並禮貌且親切地說明你的職責是協助公共議題審議，接著主動邀請使用者回到當前議題進行提問或分享看法。請千萬不要生硬地把無關問題套用到公投辯論的爭點上。
 
-【相關公投意見發表會逐字稿片段】：
-` + relevantExcerpts
+【公聽會 / 辯論逐字稿參考資料】：
+%s`, topicID, relevantExcerpts)
 
-	// 3. Call LLM (Cloudflare Workers AI or fallback mock)
-	replyText, err := e.callCloudflareAI(ctx, systemPrompt, history)
+	// 3. Call LLM (First attempt: Google Vertex AI Gemini on GCP; Fallback: Cloudflare AI)
+	replyText, err := e.callVertexAI(ctx, systemPrompt, history)
 	if err != nil {
-		// If Cloudflare token is not set yet, return structured placeholder with real debate excerpts
-		return &models.ChatMessage{
-			Role: "assistant",
-			Content: fmt.Sprintf("【審議助手（本機展示模式）】\n\n針對您的問題「%s」，以下整理自 2021 核四公投辯論會的正反關鍵論點：\n\n### 正方核心主張（黃士修等人）\n- 供電安全與空汙：強調核能發電成本穩定且低碳，能減少中南部火力發電產生的空汙。\n- 耐震加固：主張地質報告中 S 斷層非活動斷層，即便最嚴苛假設地動值 0.57G 仍低於廠房耐震標準 0.66G，且可工程補強。\n\n### 反方核心主張（許永輝、曾文生、苗博雅等人）\n- 設備老舊與施工困難：許永輝處長指出核四長達 20 年未通過試運轉測試，內部管線狹窄且歐美設備與日本機型整合困難。\n- 斷層新事證與核廢料處置：反對陣營強調外海存在活動斷層風險，且高低放射性核廢料目前台灣無地方縣市願意接納最終處置場。\n\n*提示：設定 CLOUDFLARE_API_TOKEN 與 CLOUDFLARE_ACCOUNT_ID 後即可啟動即時開源 LLM（Google Gemma / Qwen）動態引導！*", lastMsg),
-			Citations: []models.Citation{
-				{SourceTitle: "第 2 場發表會 - 許永輝 (台電核能發電處長)", Excerpt: "我過去、現在跟我現在要說的每一句話，都可以被社會大眾檢驗。我是一個工程師，我不懂政治語言，只有安全的電廠與不安全的電廠。"},
-				{SourceTitle: "第 2 場發表會 - 黃士修 (正方領銜人)", Excerpt: "根據現有的地質調查資料，S 斷層非活動斷層，造成的地震在場址最大地表加速度低於核四地表耐震 0.66G。"},
-			},
-		}, nil
+		log.Printf("[RAG] Vertex AI call failed: %v, attempting Cloudflare AI fallback...", err)
+		if e.cloudflareAccountID != "" && e.cloudflareAPIToken != "" {
+			var cfErr error
+			replyText, cfErr = e.callCloudflareAI(ctx, systemPrompt, history)
+			if cfErr != nil {
+				log.Printf("[RAG] Cloudflare AI call also failed: %v", cfErr)
+				return nil, fmt.Errorf("AI 推理服務暫時無法連線: %w", cfErr)
+			}
+		} else {
+			return nil, fmt.Errorf("Vertex AI 推理失敗: %w", err)
+		}
 	}
 
-	return &models.ChatMessage{
+	resp := &models.ChatMessage{
 		Role:    "assistant",
 		Content: replyText,
-		Citations: []models.Citation{
-			{SourceTitle: "2021 公投意見發表會逐字稿", Excerpt: "詳見逐字稿論辯摘錄"},
-		},
-	}, nil
+	}
+
+	if len(citations) > 0 {
+		resp.Citations = citations
+	}
+
+	return resp, nil
 }
 
-func (e *Engine) retrieveContext(query string) string {
+func (e *Engine) retrieveContextAndCitations(query string) (string, []models.Citation) {
 	var builder strings.Builder
+	var citations []models.Citation
+
 	keywords := strings.Fields(query)
+	matchedCount := 0
 
 	for fname, content := range e.localDebatesCache {
 		matched := false
 		for _, kw := range keywords {
-			if len(kw) > 1 && strings.Contains(content, kw) {
+			if len(kw) >= 2 && strings.Contains(content, kw) {
 				matched = true
 				break
 			}
 		}
 
-		if matched || len(e.localDebatesCache) <= 2 {
-			// Extract a snippet
+		if matched {
+			matchedCount++
 			lines := strings.Split(content, "\n")
 			snippetLines := 0
+			title := strings.TrimSuffix(fname, ".md")
+
 			for _, line := range lines {
-				if strings.HasPrefix(line, "###") || strings.Contains(line, "正方") || strings.Contains(line, "反方") {
-					builder.WriteString(line + "\n")
+				trimmed := strings.TrimSpace(line)
+				if strings.HasPrefix(trimmed, "###") || strings.Contains(trimmed, "正方") || strings.Contains(trimmed, "反方") {
+					builder.WriteString(trimmed + "\n")
 					snippetLines++
+
+					if len(citations) < 2 && len(trimmed) > 10 && len(trimmed) < 200 {
+						citations = append(citations, models.Citation{
+							SourceTitle: title,
+							Excerpt:     strings.TrimPrefix(trimmed, "### "),
+						})
+					}
+
 					if snippetLines > 8 {
 						break
 					}
 				}
 			}
 			builder.WriteString(fmt.Sprintf("\n(節錄自 %s)\n---\n", fname))
+			if matchedCount >= 2 {
+				break
+			}
 		}
 	}
 
 	if builder.Len() == 0 {
-		return "（未能匹配到具體發言段落，請根據廣泛事實回答）"
+		return "（未檢索到直接相關的逐字稿片段，若問題屬於該議題範疇，請以客觀中立之通用知識與爭點架構進行審議引導）", nil
 	}
-	return builder.String()
+
+	return builder.String(), citations
+}
+
+func getGCPToken(ctx context.Context) (string, error) {
+	// 1. Fetch from Google Compute / Cloud Run Metadata Server
+	client := &http.Client{Timeout: 3 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token", nil)
+	if err == nil {
+		req.Header.Set("Metadata-Flavor", "Google")
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var tokenData struct {
+					AccessToken string `json:"access_token"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&tokenData); err == nil && tokenData.AccessToken != "" {
+					return tokenData.AccessToken, nil
+				}
+			}
+		}
+	}
+
+	// 2. Check environment variable
+	if tok := os.Getenv("GCP_ACCESS_TOKEN"); tok != "" {
+		return tok, nil
+	}
+
+	// 3. For local development
+	if out, err := exec.CommandContext(ctx, "gcloud", "auth", "print-access-token").Output(); err == nil {
+		token := strings.TrimSpace(string(out))
+		if token != "" {
+			return token, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not obtain GCP access token")
+}
+
+func (e *Engine) callVertexAI(ctx context.Context, systemPrompt string, history []models.ChatMessage) (string, error) {
+	projectID := e.gcpProjectID
+	if projectID == "" {
+		projectID = "elix-498805"
+	}
+	region := "us-central1"
+	model := "gemini-2.5-flash"
+
+	token, err := getGCPToken(ctx)
+	if err != nil {
+		return "", fmt.Errorf("vertex auth failed: %w", err)
+	}
+
+	url := fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent",
+		region, projectID, region, model)
+
+	type Part struct {
+		Text string `json:"text"`
+	}
+	type Content struct {
+		Role  string `json:"role"`
+		Parts []Part `json:"parts"`
+	}
+	type SystemInstruction struct {
+		Parts []Part `json:"parts"`
+	}
+	type VertexReq struct {
+		SystemInstruction *SystemInstruction `json:"systemInstruction,omitempty"`
+		Contents          []Content          `json:"contents"`
+	}
+
+	var contents []Content
+	for _, m := range history {
+		role := "user"
+		if m.Role == "assistant" {
+			role = "model"
+		}
+		contents = append(contents, Content{
+			Role:  role,
+			Parts: []Part{{Text: m.Content}},
+		})
+	}
+
+	reqBodyObj := VertexReq{
+		SystemInstruction: &SystemInstruction{
+			Parts: []Part{{Text: systemPrompt}},
+		},
+		Contents: contents,
+	}
+
+	reqBytes, err := json.Marshal(reqBodyObj)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("vertex AI error (%d): %s", resp.StatusCode, string(b))
+	}
+
+	var vertexResp struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&vertexResp); err != nil {
+		return "", err
+	}
+
+	if len(vertexResp.Candidates) == 0 || len(vertexResp.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("empty response from vertex AI")
+	}
+
+	return vertexResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
 func (e *Engine) callCloudflareAI(ctx context.Context, systemPrompt string, history []models.ChatMessage) (string, error) {
