@@ -119,7 +119,15 @@ export default function App() {
   useEffect(() => {
     const handleCredentialResponse = (response: any) => {
       try {
-        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
         const profile: UserProfile = {
           name: payload.name || payload.email,
           email: payload.email,
@@ -142,8 +150,20 @@ export default function App() {
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleCredentialResponse,
-          auto_select: true,
+          auto_select: false,
         });
+
+        const btnSlot = document.getElementById('google-btn-slot');
+        if (btnSlot) {
+          window.google.accounts.id.renderButton(btnSlot, {
+            theme: 'outline',
+            size: 'medium',
+            shape: 'pill',
+            text: 'signin_with',
+            locale: 'zh-TW',
+          });
+        }
+
         window.google.accounts.id.prompt();
       }
     };
@@ -375,19 +395,29 @@ export default function App() {
               訪客身份，直接開始 →
             </button>
             {googleClientId && !googleClientId.includes('TOPOS_CLIENT_ID') ? (
-              <button
-                onClick={() => window.google?.accounts?.id?.prompt()}
-                style={{ background: '#FFFCF1', color: '#100C0A', border: '2px solid #100C0A', borderRadius: '999px', padding: '10px 18px', fontWeight: 900, fontSize: '13px', cursor: 'pointer' }}
-              >
-                Google 登入
-              </button>
+              <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <div id="google-btn-slot"></div>
+              </div>
             ) : (
               <button
-                disabled
-                title="Google OAuth 用戶端 ID 尚未設定"
-                style={{ background: '#FFFCF1', color: '#6E5F50', border: '2px solid rgba(16,12,10,.3)', borderRadius: '999px', padding: '10px 18px', fontWeight: 700, fontSize: '13px', cursor: 'not-allowed', opacity: 0.6 }}
+                onClick={() => {
+                  alert(
+                    '【Google 登入設定指引】\n\n目前後端尚未配置 GOOGLE_CLIENT_ID。\n\n請在 GCP Console (專案 elix-498805) 建立 OAuth 2.0 用戶端 ID（類型：網頁應用程式），並將 https://topos-d10.pages.dev 加入「已授權的 JavaScript 來源」，再設定於 Cloud Run 環境變數即可啟用！\n\n現在可直接點擊左側「訪客身份，直接開始 →」立即體驗完整審議功能。'
+                  );
+                }}
+                title="點擊查看設定說明（或使用左側訪客身份）"
+                style={{
+                  background: '#FFFCF1',
+                  color: '#6E5F50',
+                  border: '2px dashed rgba(16,12,10,.4)',
+                  borderRadius: '999px',
+                  padding: '9px 18px',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
               >
-                Google 登入
+                Google 登入（尚未設定 Client ID）
               </button>
             )}
           </div>
