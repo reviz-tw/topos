@@ -167,7 +167,7 @@ func (s *Server) processRequest(ctx context.Context, req JSONRPCRequest) JSONRPC
 						"properties": map[string]interface{}{
 							"topicId": map[string]interface{}{
 								"type":        "string",
-								"description": "The topic ID, e.g. 'nuclear4' or 'control-yuan'",
+								"description": "The topic ID, e.g. 'nuclear4'",
 							},
 						},
 						"required": []string{"topicId"},

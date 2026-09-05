@@ -45,21 +45,6 @@ const FALLBACK_TOPICS: Topic[] = [
       },
     ],
   },
-  {
-    id: 'control-yuan',
-    category: '憲政體制',
-    title: '台灣是否應該廢除監察院與考試院（走向三權分立）？',
-    description: '探討五權憲法架構在現代民主體制的運作困境、彈劾與調查權歸屬、以及修憲門檻挑戰。',
-    tags: ['憲政', '五權憲法', '三權分立', '監察院'],
-    keyCruxes: [
-      {
-        title: '彈劾與調查權歸屬',
-        description: '若廢除監察院，彈劾與公務員懲戒權力應移交立法院還是司法機關？',
-        proPoints: ['符合當代主流民主國家三權分立體制', '監察委員常被質疑淪為政黨酬庸與政治工具', '將調查與審計權回歸國會與獨立審計部，提升監督效率'],
-        conPoints: ['國會若獨攬調查與彈劾權，恐造成立法院擴權、少數執政受癱瘓', '孫中山五權憲法強調監察權獨立於立法權之外，防止國會專制', '立委素質與黨派對立嚴重，未必比獨立監察院更客觀'],
-      },
-    ],
-  },
 ];
 
 export default function App() {
@@ -71,14 +56,18 @@ export default function App() {
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [remainingQuota, setRemainingQuota] = useState<number>(30);
+  const [remainingQuota, setRemainingQuota] = useState<number>(5);
   const [googleClientId, setGoogleClientId] = useState<string>(import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
 
   // 1. Restore local storage on initial mount
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem('topos_user');
-      if (savedUser) setUser(JSON.parse(savedUser));
+      let u: UserProfile | null = null;
+      if (savedUser) {
+        u = JSON.parse(savedUser);
+        setUser(u);
+      }
 
       const savedMsgs = localStorage.getItem('topos_messages_by_topic');
       if (savedMsgs) setMessagesByTopic(JSON.parse(savedMsgs));
@@ -87,7 +76,11 @@ export default function App() {
       if (savedHistory) setHistoryByTopic(JSON.parse(savedHistory));
 
       const savedQuota = localStorage.getItem('topos_remaining_quota');
-      if (savedQuota) setRemainingQuota(Number(savedQuota));
+      if (savedQuota) {
+        setRemainingQuota(Number(savedQuota));
+      } else {
+        setRemainingQuota(u && u.token !== 'guest-token' ? 30 : 5);
+      }
     } catch (e) {
       console.error('Failed to load local storage state:', e);
     }
@@ -136,6 +129,8 @@ export default function App() {
         };
         setUser(profile);
         localStorage.setItem('topos_user', JSON.stringify(profile));
+        setRemainingQuota(30);
+        localStorage.setItem('topos_remaining_quota', '30');
       } catch (e) {
         console.error('Failed to parse Google JWT:', e);
       }
@@ -202,12 +197,15 @@ export default function App() {
     };
     setUser(guestUser);
     localStorage.setItem('topos_user', JSON.stringify(guestUser));
+    setRemainingQuota((prev) => Math.min(prev, 5));
     return guestUser;
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('topos_user');
+    setRemainingQuota(5);
+    localStorage.setItem('topos_remaining_quota', '5');
   };
 
   const formatNow = () => {
@@ -271,9 +269,15 @@ export default function App() {
         return updated;
       });
 
-      if (typeof data.remaining === 'number') {
-        setRemainingQuota(data.remaining);
-        localStorage.setItem('topos_remaining_quota', String(data.remaining));
+      const rem =
+        typeof data.remainingRequests === 'number'
+          ? data.remainingRequests
+          : typeof data.remaining === 'number'
+          ? data.remaining
+          : null;
+      if (rem !== null) {
+        setRemainingQuota(rem);
+        localStorage.setItem('topos_remaining_quota', String(rem));
       } else {
         setRemainingQuota((prev) => Math.max(0, prev - 1));
       }
@@ -336,7 +340,9 @@ export default function App() {
     fontWeight: 600,
   };
 
-  const canSend = !!inputText.trim() && !loading && !viewedSession;
+  const isGuest = !user || user.token === 'guest-token';
+  const isExhausted = remainingQuota <= 0;
+  const canSend = !!inputText.trim() && !loading && !viewedSession && !isExhausted;
 
   return (
     <div style={{
@@ -554,7 +560,9 @@ export default function App() {
                 </div>
               </div>
               <span style={{ background: '#100C0A', color: '#FFF7E4', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, padding: '5px 12px', borderRadius: '999px' }}>
-                本小時剩餘 {remainingQuota} 次
+                {isGuest
+                  ? `訪客額度 · 本小時剩餘 ${remainingQuota} / 5 次`
+                  : `會員額度 · 本小時剩餘 ${remainingQuota} / 30 次`}
               </span>
             </div>
 
@@ -587,26 +595,51 @@ export default function App() {
                   <div
                     key={i}
                     style={{
-                      alignSelf: isUser ? 'flex-end' : 'flex-start',
-                      maxWidth: '82%',
-                      background: isUser ? '#100C0A' : '#FFFCF1',
-                      color: isUser ? '#FFF7E4' : '#100C0A',
-                      border: isUser ? '2px solid #100C0A' : '2px solid rgba(16,12,10,.18)',
-                      borderRadius: '10px',
-                      padding: '12px 16px',
-                      fontSize: '14px',
-                      lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap',
-                      boxShadow: isUser ? '4px 4px 0 #100C0A' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: isUser ? 'flex-end' : 'flex-start',
+                      gap: '4px',
                     }}
                   >
-                    <div>{m.content}</div>
+                    <div style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#6E5F50', fontWeight: 700 }}>
+                      {isUser ? (user?.name || '你') : '審議引導助手 (Topos Facilitator)'}
+                    </div>
+                    <div
+                      style={{
+                        maxWidth: '85%',
+                        padding: '14px 18px',
+                        borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                        border: '2px solid #100C0A',
+                        background: isUser ? '#100C0A' : '#FFF7E4',
+                        color: isUser ? '#FFF7E4' : '#100C0A',
+                        fontSize: '14px',
+                        lineHeight: 1.65,
+                        whiteSpace: 'pre-wrap',
+                        boxShadow: '3px 3px 0 #100C0A',
+                      }}
+                    >
+                      {m.content}
+                    </div>
+
+                    {/* Grounded Citations */}
                     {m.citations && m.citations.length > 0 && (
-                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(16,12,10,.18)', fontSize: '12px' }}>
-                        <strong>引文依據：</strong>
-                        {m.citations.map((ci, cidx) => (
-                          <div key={cidx} style={{ marginTop: '4px', fontStyle: 'italic', color: '#6E5F50' }}>
-                            • {ci.sourceTitle}：「{ci.excerpt}」
+                      <div style={{ maxWidth: '85%', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {m.citations.map((c, ci) => (
+                          <div
+                            key={ci}
+                            style={{
+                              background: '#FFF1A6',
+                              border: '1.5px solid #100C0A',
+                              borderRadius: '8px',
+                              padding: '6px 10px',
+                              fontSize: '11px',
+                              color: '#3A2D00',
+                            }}
+                          >
+                            <span style={{ fontWeight: 800 }}>📌 引用根據：{c.sourceTitle}</span>
+                            <div style={{ fontStyle: 'italic', marginTop: '2px', color: '#5A4600' }}>
+                              「{c.excerpt}」
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -616,8 +649,9 @@ export default function App() {
               })}
 
               {loading && (
-                <div style={{ color: '#002A45', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', animation: 'topos-pulse 1.1s ease-in-out infinite' }}>
-                  審議助手正在檢索逐字稿…
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6E5F50', fontSize: '13px', fontStyle: 'italic', margin: '10px 0' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF2E88', animation: 'topos-pulse 1s infinite' }} />
+                  審議引導助手正在檢索 2021 公投逐字稿論點並進行中立推理…
                 </div>
               )}
             </div>
@@ -629,8 +663,14 @@ export default function App() {
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  disabled={loading}
-                  placeholder={viewedSession ? '正在回顧歷史紀錄，返回目前對話後可繼續提問' : '輸入你的問題或觀點，按送出…'}
+                  disabled={loading || (isGuest && isExhausted)}
+                  placeholder={
+                    viewedSession
+                      ? '正在回顧歷史紀錄，返回目前對話後可繼續提問'
+                      : isGuest && isExhausted
+                      ? '訪客 5 次額度已用畢，請點擊右上角「Google 登入」解鎖 30 次額度！'
+                      : '輸入你的問題或觀點，按送出…'
+                  }
                   style={{ flex: '1 1 200px', minHeight: '48px', padding: '0 16px', borderRadius: '999px', border: '2px solid #100C0A', background: '#FFF7E4', color: '#100C0A', fontSize: '14px', outline: 'none' }}
                 />
                 <button

@@ -34,7 +34,10 @@ func NewRateLimiter(maxPerHour int) *RateLimiter {
 }
 
 // Allow checks if the user is allowed to make a request and returns remaining attempts.
-func (rl *RateLimiter) Allow(email string) (bool, int) {
+func (rl *RateLimiter) Allow(email string, maxLimit int) (bool, int) {
+	if maxLimit <= 0 {
+		maxLimit = rl.maxPerHour
+	}
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -49,14 +52,14 @@ func (rl *RateLimiter) Allow(email string) (bool, int) {
 		}
 	}
 
-	if len(validTimes) >= rl.maxPerHour {
+	if len(validTimes) >= maxLimit {
 		rl.limits[email] = validTimes
 		return false, 0
 	}
 
 	validTimes = append(validTimes, now)
 	rl.limits[email] = validTimes
-	return true, rl.maxPerHour - len(validTimes)
+	return true, maxLimit - len(validTimes)
 }
 
 // Authenticator validates Google ID Tokens and enforces rate limits.
@@ -170,9 +173,18 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			}
 		}
 
-		allowed, remaining := a.limiter.Allow(user.Email)
+		quotaLimit := 30
+		if user.Subject == "guest" {
+			quotaLimit = 5
+		}
+
+		allowed, remaining := a.limiter.Allow(user.Email, quotaLimit)
 		if !allowed {
-			http.Error(w, `{"error":"hourly rate limit exceeded. Please wait before asking more questions"}`, http.StatusTooManyRequests)
+			if user.Subject == "guest" {
+				http.Error(w, `{"error":"訪客體驗額度（每小時 5 次）已達上限，請點擊右上角「Google 登入」以解鎖每小時 30 次對話額度！"}`, http.StatusTooManyRequests)
+			} else {
+				http.Error(w, `{"error":"每小時對話額度（30 次）已用畢，請稍候再試"}`, http.StatusTooManyRequests)
+			}
 			return
 		}
 
