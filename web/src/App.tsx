@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Topic, ChatMessage, UserProfile, HistorySession } from './types';
+import {
+  SupportedLanguage,
+  detectUserLanguage,
+  setCookie,
+  LANGUAGE_COOKIE_NAME,
+} from './utils/cookie';
+import {
+  TRANSLATIONS,
+  TOPIC_TRANSLATIONS,
+} from './i18n/translations';
+import { LanguageSelector } from './components/LanguageSelector';
 
 // Declare Google Identity Services global
 declare global {
@@ -48,6 +59,7 @@ const FALLBACK_TOPICS: Topic[] = [
 ];
 
 export default function App() {
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(() => detectUserLanguage());
   const [topics, setTopics] = useState<Topic[]>(FALLBACK_TOPICS);
   const [selectedTopicId, setSelectedTopicId] = useState<string>(FALLBACK_TOPICS[0].id);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -58,6 +70,26 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [remainingQuota, setRemainingQuota] = useState<number>(5);
   const [googleClientId, setGoogleClientId] = useState<string>(import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS['zh-TW'];
+
+  // Update HTML document attributes when language changes
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = currentLang;
+      document.title = t.appTitle;
+    }
+  }, [currentLang, t.appTitle]);
+
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
+    setCurrentLang(newLang);
+    setCookie(LANGUAGE_COOKIE_NAME, newLang, 365);
+    try {
+      localStorage.setItem(LANGUAGE_COOKIE_NAME, newLang);
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
 
   // 1. Restore local storage on initial mount
   useEffect(() => {
@@ -149,7 +181,7 @@ export default function App() {
             size: 'medium',
             shape: 'pill',
             text: 'signin_with',
-            locale: 'zh-TW',
+            locale: currentLang === 'zh-TW' ? 'zh-TW' : currentLang,
           });
         } catch (e) {
           console.warn('Failed to render Google button:', e);
@@ -186,12 +218,12 @@ export default function App() {
       }, 300);
       return () => clearInterval(timer);
     }
-  }, [googleClientId, user]);
+  }, [googleClientId, user, currentLang]);
 
   // Actions
   const loginGuest = (): UserProfile => {
     const guestUser: UserProfile = {
-      name: '訪客體驗者',
+      name: t.guestUserName,
       email: 'guest@topos.local',
       token: 'guest-token',
     };
@@ -214,9 +246,24 @@ export default function App() {
     return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   };
 
-  const selectedTopic = topics.find((t) => t.id === selectedTopicId) || topics[0] || FALLBACK_TOPICS[0];
-  const selIdx = topics.indexOf(selectedTopic);
-  const selCat = CAT_COLORS[selIdx % CAT_COLORS.length] || CAT_COLORS[0];
+  // Resolve localized topic content
+  const getLocalizedTopic = (rawTopic: Topic): Topic => {
+    const trans = TOPIC_TRANSLATIONS[rawTopic.id]?.[currentLang];
+    if (!trans) return rawTopic;
+    return {
+      ...rawTopic,
+      category: trans.category || rawTopic.category,
+      title: trans.title || rawTopic.title,
+      description: trans.description || rawTopic.description,
+      tags: trans.tags || rawTopic.tags,
+      keyCruxes: trans.keyCruxes || rawTopic.keyCruxes,
+    };
+  };
+
+  const rawSelectedTopic = topics.find((t) => t.id === selectedTopicId) || topics[0] || FALLBACK_TOPICS[0];
+  const selectedTopic = getLocalizedTopic(rawSelectedTopic);
+  const selIdx = topics.findIndex((t) => t.id === rawSelectedTopic.id);
+  const selCat = CAT_COLORS[Math.max(0, selIdx) % CAT_COLORS.length] || CAT_COLORS[0];
 
   const currentLiveMessages = messagesByTopic[selectedTopic.id] || [];
   const historyList = historyByTopic[selectedTopic.id] || [];
@@ -254,6 +301,7 @@ export default function App() {
         body: JSON.stringify({
           topicId: selectedTopic.id,
           messages: newHistory,
+          language: currentLang,
         }),
       });
 
@@ -285,7 +333,7 @@ export default function App() {
       setMessagesByTopic((prev) => {
         const fallbackMsg: ChatMessage = {
           role: 'assistant',
-          content: `[伺服器回應] 針對「${text}」：\n\n核四議題涉及耐震安全評估、試運轉安檢完整性與國家長程能源減碳路徑。\n\n提示：${err.message}`,
+          content: `[Topos Facilitator]:\n\n${err.message}`,
         };
         const updated = { ...prev, [selectedTopic.id]: [...newHistory, fallbackMsg] };
         localStorage.setItem('topos_messages_by_topic', JSON.stringify(updated));
@@ -298,7 +346,7 @@ export default function App() {
 
   const archiveSession = () => {
     if (currentLiveMessages.length === 0) return;
-    const firstQ = (currentLiveMessages.find((m) => m.role === 'user') || { content: '審議對話' }).content;
+    const firstQ = (currentLiveMessages.find((m) => m.role === 'user') || { content: t.defaultSessionTitle }).content;
     const session: HistorySession = {
       id: 's' + Date.now(),
       dateLabel: formatNow(),
@@ -379,67 +427,76 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: '26px', letterSpacing: '-0.01em' }}>topos</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: 700, background: '#100C0A', color: '#FFF7E4', padding: '3px 8px', borderRadius: '4px', transform: 'rotate(-2deg)', display: 'inline-block', letterSpacing: '.05em' }}>審議 DESK</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: 700, background: '#100C0A', color: '#FFF7E4', padding: '3px 8px', borderRadius: '4px', transform: 'rotate(-2deg)', display: 'inline-block', letterSpacing: '.05em' }}>
+                {t.deskBadge}
+              </span>
             </div>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: '#6E5F50', marginTop: '3px' }}>
-              OPEN DELIBERATION · 公共審議平台
+              {t.subtitle}
             </div>
           </div>
         </div>
 
-        {/* User Auth Section */}
-        {user ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#FF2E88', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '14px', border: '2px solid #100C0A' }}>
-              {user.name ? user.name.charAt(0) : 'U'}
-            </div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700 }}>{user.name}</div>
-              <div style={{ fontSize: '11px', color: '#6E5F50', fontFamily: "'JetBrains Mono', monospace" }}>{user.email}</div>
-            </div>
-            <button
-              onClick={logout}
-              style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '8px 16px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
-            >
-              登出
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={loginGuest}
-              style={{ background: '#FF2E88', color: '#fff', border: '2px solid #100C0A', borderRadius: '999px', padding: '10px 20px', fontWeight: 900, fontSize: '13px', cursor: 'pointer', boxShadow: '4px 4px 0 #100C0A' }}
-            >
-              訪客身份，直接開始 →
-            </button>
-            {googleClientId && !googleClientId.includes('TOPOS_CLIENT_ID') ? (
-              <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <div id="google-btn-slot"></div>
+        {/* Right Header Section: Language Switcher + User Auth */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Language Selector */}
+          <LanguageSelector
+            currentLang={currentLang}
+            onLanguageChange={handleLanguageChange}
+            ariaLabel={t.languageSelectAria}
+          />
+
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#FF2E88', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '14px', border: '2px solid #100C0A' }}>
+                {user.name ? user.name.charAt(0) : 'U'}
               </div>
-            ) : (
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700 }}>{user.name}</div>
+                <div style={{ fontSize: '11px', color: '#6E5F50', fontFamily: "'JetBrains Mono', monospace" }}>{user.email}</div>
+              </div>
               <button
-                onClick={() => {
-                  alert(
-                    '【Google 登入設定指引】\n\n目前後端尚未配置 GOOGLE_CLIENT_ID。\n\n請在 GCP Console (專案 elix-498805) 建立 OAuth 2.0 用戶端 ID（類型：網頁應用程式），並將 https://topos-d10.pages.dev 加入「已授權的 JavaScript 來源」，再設定於 Cloud Run 環境變數即可啟用！\n\n現在可直接點擊左側「訪客身份，直接開始 →」立即體驗完整審議功能。'
-                  );
-                }}
-                title="點擊查看設定說明（或使用左側訪客身份）"
-                style={{
-                  background: '#FFFCF1',
-                  color: '#6E5F50',
-                  border: '2px dashed rgba(16,12,10,.4)',
-                  borderRadius: '999px',
-                  padding: '9px 18px',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
+                onClick={logout}
+                style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '8px 16px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
               >
-                Google 登入（尚未設定 Client ID）
+                {t.logout}
               </button>
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={loginGuest}
+                style={{ background: '#FF2E88', color: '#fff', border: '2px solid #100C0A', borderRadius: '999px', padding: '10px 20px', fontWeight: 900, fontSize: '13px', cursor: 'pointer', boxShadow: '4px 4px 0 #100C0A' }}
+              >
+                {t.guestButton}
+              </button>
+              {googleClientId && !googleClientId.includes('TOPOS_CLIENT_ID') ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <div id="google-btn-slot"></div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    alert(t.googleLoginAlert);
+                  }}
+                  title="點擊查看設定說明（或使用左側訪客身份）"
+                  style={{
+                    background: '#FFFCF1',
+                    color: '#6E5F50',
+                    border: '2px dashed rgba(16,12,10,.4)',
+                    borderRadius: '999px',
+                    padding: '9px 18px',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t.googleLoginNotConfigured}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Main Grid: Topic Selector + Topic Details/Cruxes + Chat */}
@@ -448,17 +505,18 @@ export default function App() {
         {/* Left: Topic Selector */}
         <aside style={{ flex: '1 1 260px', minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#6E5F50' }}>
-            PICK A TOPIC · 選擇議題
+            {t.pickTopicHeading}
           </div>
-          {topics.map((t, i) => {
-            const isSel = t.id === selectedTopic.id;
+          {topics.map((rawT, i) => {
+            const locT = getLocalizedTopic(rawT);
+            const isSel = rawT.id === selectedTopic.id;
             const cc = CAT_COLORS[i % CAT_COLORS.length];
-            const cruxLen = t.keyCruxes?.length || 0;
+            const cruxLen = locT.keyCruxes?.length || 0;
             return (
               <div
-                key={t.id}
+                key={rawT.id}
                 onClick={() => {
-                  setSelectedTopicId(t.id);
+                  setSelectedTopicId(rawT.id);
                   setViewingSessionId(null);
                 }}
                 style={{
@@ -474,13 +532,13 @@ export default function App() {
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '999px', background: cc.tint, color: cc.ink, fontSize: '11px', fontWeight: 900, border: `1px solid ${cc.ink}` }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: cc.dot, display: 'inline-block' }}></span>
-                  {t.category}
+                  {locT.category}
                 </span>
                 <div style={{ marginTop: '8px', fontWeight: 900, fontSize: '14px', lineHeight: 1.4 }}>
-                  {t.title}
+                  {locT.title}
                 </div>
                 <div style={{ marginTop: '6px', fontSize: '11px', color: '#6E5F50', fontFamily: "'JetBrains Mono', monospace" }}>
-                  § {cruxLen} 個核心爭點
+                  {t.cruxCount(cruxLen)}
                 </div>
               </div>
             );
@@ -505,7 +563,7 @@ export default function App() {
             <hr style={{ border: 0, borderTop: '2px dashed rgba(16,12,10,.18)', margin: '0 0 20px' }} />
 
             <h4 style={{ fontWeight: 900, fontSize: '14px', letterSpacing: '.02em', margin: '0 0 14px' }}>
-              核心爭議關鍵點 · KEY CRUXES
+              {t.keyCruxesHeading}
             </h4>
 
             {/* Cruxes Grid */}
@@ -527,7 +585,7 @@ export default function App() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '.04em', color: '#002A45' }}>
-                        ✓ 正方 PRO
+                        {t.proLabel}
                       </div>
                       {pros.map((p, pi) => (
                         <div key={pi} style={proBoxStyle}>{p}</div>
@@ -536,7 +594,7 @@ export default function App() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '.04em', color: '#5A0024' }}>
-                        ✕ 反方 CON
+                        {t.conLabel}
                       </div>
                       {cons.map((p, pi) => (
                         <div key={pi} style={conBoxStyle}>{p}</div>
@@ -553,28 +611,28 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h2 style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: '22px', margin: 0 }}>
-                  審議引導對話
+                  {t.facilitatorTitle}
                 </h2>
                 <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#6E5F50', marginTop: '4px' }}>
-                  Topos Facilitator · AI 逐字稿推理引擎
+                  {t.facilitatorSubtitle}
                 </div>
               </div>
               <span style={{ background: '#100C0A', color: '#FFF7E4', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, padding: '5px 12px', borderRadius: '999px' }}>
                 {isGuest
-                  ? `訪客額度 · 本小時剩餘 ${remainingQuota} / 5 次`
-                  : `會員額度 · 本小時剩餘 ${remainingQuota} / 30 次`}
+                  ? t.guestQuotaLabel(remainingQuota)
+                  : t.memberQuotaLabel(remainingQuota)}
               </span>
             </div>
 
             {/* If viewing history banner */}
             {viewedSession && (
               <div style={{ background: '#FFF1A6', border: '2px solid #100C0A', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#3A2D00' }}>
-                <span>正在回顧 {viewedSession.dateLabel} 的討論</span>
+                <span>{t.reviewingBanner(viewedSession.dateLabel)}</span>
                 <button
                   onClick={() => setViewingSessionId(null)}
                   style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '5px 12px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
                 >
-                  返回目前對話 →
+                  {t.backToCurrentDialogue}
                 </button>
               </div>
             )}
@@ -582,10 +640,35 @@ export default function App() {
             {/* Chat message bubbles */}
             <div style={{ minHeight: '220px', maxHeight: '440px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 2px' }}>
               {activeMessages.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#6E5F50', fontSize: '14px', marginTop: '40px', lineHeight: 1.8 }}>
-                  你可以直接丟問題，不用先想好要怎麼問，例如：<br />
-                  「台灣的地震帶地質，會為核電廠帶來大災害的可能性嗎」<br />
-                  「如果重啟核四，核廢料目前各國都是怎麼處理的？」
+                <div style={{ textAlign: 'center', color: '#6E5F50', fontSize: '14px', marginTop: '30px', lineHeight: 1.8 }}>
+                  <div>{t.emptyChatPrompt}</div>
+                  <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                    {t.sampleQuestions.map((q, qi) => (
+                      <span
+                        key={qi}
+                        onClick={() => {
+                          if (!loading && !viewedSession && !isExhausted) {
+                            setInputText(q.replace(/^[「"«]+|[」"»]+$/g, ''));
+                          }
+                        }}
+                        style={{
+                          cursor: 'pointer',
+                          background: '#FFF7E4',
+                          border: '1px solid rgba(16,12,10,.25)',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '12px',
+                          color: '#100C0A',
+                          maxWidth: '90%',
+                          transition: 'all 0.1s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#100C0A')}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(16,12,10,.25)')}
+                      >
+                        {q}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -602,7 +685,7 @@ export default function App() {
                     }}
                   >
                     <div style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#6E5F50', fontWeight: 700 }}>
-                      {isUser ? (user?.name || '你') : '審議引導助手 (Topos Facilitator)'}
+                      {isUser ? (user?.name || t.userLabel) : t.facilitatorLabel}
                     </div>
                     <div
                       style={{
@@ -636,7 +719,7 @@ export default function App() {
                               color: '#3A2D00',
                             }}
                           >
-                            <span style={{ fontWeight: 800 }}>📌 引用根據：{c.sourceTitle}</span>
+                            <span style={{ fontWeight: 800 }}>{t.citationSource}{c.sourceTitle}</span>
                             <div style={{ fontStyle: 'italic', marginTop: '2px', color: '#5A4600' }}>
                               「{c.excerpt}」
                             </div>
@@ -651,7 +734,7 @@ export default function App() {
               {loading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6E5F50', fontSize: '13px', fontStyle: 'italic', margin: '10px 0' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF2E88', animation: 'topos-pulse 1s infinite' }} />
-                  審議引導助手正在檢索 2021 公投逐字稿論點並進行中立推理…
+                  {t.loadingMessage}
                 </div>
               )}
             </div>
@@ -666,10 +749,10 @@ export default function App() {
                   disabled={loading || (isGuest && isExhausted)}
                   placeholder={
                     viewedSession
-                      ? '正在回顧歷史紀錄，返回目前對話後可繼續提問'
+                      ? t.inputPlaceholderReviewing
                       : isGuest && isExhausted
-                      ? '訪客 5 次額度已用畢，請點擊右上角「Google 登入」解鎖 30 次額度！'
-                      : '輸入你的問題或觀點，按送出…'
+                      ? t.inputPlaceholderExhausted
+                      : t.inputPlaceholderNormal
                   }
                   style={{ flex: '1 1 200px', minHeight: '48px', padding: '0 16px', borderRadius: '999px', border: '2px solid #100C0A', background: '#FFF7E4', color: '#100C0A', fontSize: '14px', outline: 'none' }}
                 />
@@ -688,7 +771,7 @@ export default function App() {
                     boxShadow: canSend ? '4px 4px 0 #100C0A' : 'none',
                   }}
                 >
-                  送出 →
+                  {t.sendButton}
                 </button>
               </form>
             )}
@@ -700,12 +783,12 @@ export default function App() {
                   onClick={archiveSession}
                   style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '8px 16px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
                 >
-                  封存本次討論，開新提問 ↻
+                  {t.archiveButton}
                 </button>
               ) : <div></div>}
               {!user && (
                 <span style={{ fontSize: '12px', color: '#6E5F50' }}>
-                  送出問題會自動以訪客身份加入 · guest@topos.local
+                  {t.guestNotice}
                 </span>
               )}
             </div>
@@ -714,11 +797,11 @@ export default function App() {
           {/* History Panel */}
           <div style={{ background: '#FFFCF1', border: '2px solid #100C0A', borderRadius: '14px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <h4 style={{ fontWeight: 900, fontSize: '13px', letterSpacing: '.02em', margin: 0 }}>
-              歷史對話紀錄 · HISTORY
+              {t.historyHeading}
             </h4>
             {historyList.length === 0 ? (
               <div style={{ fontSize: '13px', color: '#6E5F50' }}>
-                目前議題還沒有封存的討論。送出幾個問題後，可以按「封存本次討論」把這輪對話留存下來。
+                {t.historyEmpty}
               </div>
             ) : (
               historyList.map((h) => (

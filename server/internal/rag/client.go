@@ -79,7 +79,7 @@ func (e *Engine) loadLocalDebates() {
 }
 
 // Deliberate produces a multi-perspective, grounded response to the user's issue inquiry.
-func (e *Engine) Deliberate(ctx context.Context, topicID string, history []models.ChatMessage) (*models.ChatMessage, error) {
+func (e *Engine) Deliberate(ctx context.Context, topicID string, history []models.ChatMessage, language ...string) (*models.ChatMessage, error) {
 	if len(history) == 0 {
 		return nil, fmt.Errorf("history cannot be empty")
 	}
@@ -89,11 +89,34 @@ func (e *Engine) Deliberate(ctx context.Context, topicID string, history []model
 	// 1. Retrieve context & citations from debate transcripts
 	relevantExcerpts, citations := e.retrieveContextAndCitations(lastMsg)
 
+	// Determine preferred language prompt if specified
+	langPrompt := ""
+	if len(language) > 0 && language[0] != "" {
+		switch language[0] {
+		case "en":
+			langPrompt = "\n【語言要求】：請以流暢客觀的英文（English）回應使用者的問題與論述。\n"
+		case "ja":
+			langPrompt = "\n【語言要求】：請以流暢客觀的日文（日本語）回應使用者的問題與論述。\n"
+		case "ko":
+			langPrompt = "\n【語言要求】：請以流暢客觀的韓文（한국어）回應使用者的問題與論述。\n"
+		case "fr":
+			langPrompt = "\n【語言要求】：請以流暢客觀的法文（Français）回應使用者的問題與論述。\n"
+		case "de":
+			langPrompt = "\n【語言要求】：請以流暢客觀的德文（Deutsch）回應使用者的問題與論述。\n"
+		case "es":
+			langPrompt = "\n【語言要求】：請以流暢客觀的西班牙文（Español）回應使用者的問題與論述。\n"
+		case "it":
+			langPrompt = "\n【語言要求】：請以流暢客觀的義大利文（Italiano）回應使用者的問題與論述。\n"
+		default:
+			langPrompt = "\n【語言要求】：請以正體中文（繁體中文）回應使用者的問題與論述。\n"
+		}
+	}
+
 	// 2. Build Deliberation System Prompt
 	systemPrompt := fmt.Sprintf(`你是由 Topos 驅動的公眾審議引導助手（Topos Deliberative Facilitator）。
 目前公民正在探討的公共議題是【%s】。
 你的核心目標是協助公民深入理解公共議題，呈現多元且平衡的事實與論述，促進建設性對話，絕不預設立場。
-
+%s
 【引導原則】：
 1. 若使用者的提問或觀點與當前議題（例如核四重啟、地質耐震、能源轉型、公投或憲政體制等）相關：
    - 【平衡呈現】：清楚梳理正反雙方的核心論據與背後價值觀（例如：環境風險 vs. 供電穩定；三權分立 vs. 五權憲法）。
@@ -103,7 +126,7 @@ func (e *Engine) Deliberate(ctx context.Context, topicID string, history []model
    - 請以友善、自然的口吻簡短回應使用者的問題，並禮貌且親切地說明你的職責是協助公共議題審議，接著主動邀請使用者回到當前議題進行提問或分享看法。請千萬不要生硬地把無關問題套用到公投辯論的爭點上。
 
 【公聽會 / 辯論逐字稿參考資料】：
-%s`, topicID, relevantExcerpts)
+%s`, topicID, langPrompt, relevantExcerpts)
 
 	// 3. Call LLM (First attempt: Google Vertex AI Gemini on GCP; Fallback: Cloudflare AI)
 	replyText, err := e.callVertexAI(ctx, systemPrompt, history)

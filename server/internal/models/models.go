@@ -45,6 +45,7 @@ type Citation struct {
 type ChatRequest struct {
 	TopicID  string        `json:"topicId"`
 	Messages []ChatMessage `json:"messages"`
+	Language string        `json:"language,omitempty"`
 }
 
 // ChatResponse is returned to the frontend.

@@ -110,7 +110,7 @@ func main() {
 			return
 		}
 
-		reply, err := ragEngine.Deliberate(r.Context(), id, req.Messages)
+		reply, err := ragEngine.Deliberate(r.Context(), id, req.Messages, req.Language)
 		if err != nil {
 			log.Printf("[ERROR] Deliberation failed for user %s: %v", user.Email, err)
 			http.Error(w, fmt.Sprintf(`{"error":"deliberation error: %s"}`, err.Error()), http.StatusInternalServerError)
