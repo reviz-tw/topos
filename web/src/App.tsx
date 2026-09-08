@@ -56,7 +56,64 @@ const FALLBACK_TOPICS: Topic[] = [
       },
     ],
   },
+  {
+    id: 'sports-station',
+    category: '市政空間與體育政策',
+    title: '台北市是否應於捷運站與登山口廣設「運動驛站」？',
+    description: '探討 2026 台北市長選舉中關於在捷運站、登山步道口增設更衣與盥洗設施之政見，權衡日常運動便利性、公共安全隱私與市政財政運維負擔。',
+    tags: ['台北市政', '運動友善', '公共設施', '治安隱私', '2026市長選舉', '捷運'],
+    keyCruxes: [
+      {
+        title: '日常運動門檻降低 vs. 現有運動中心資源重疊',
+        description: '點狀分布的簡易盥洗寄物設施是否真能提升運動頻率？還是應優先活化現有 12 區運動中心與特色站？',
+        proPoints: ['降低戶外運動後更衣盥洗門檻，有助通勤族與戶外運動者將運動融入日常', '市民反映爬山、外勤運將等有真實中途整裝與盥洗需求', '串聯山林徑、TPASS 打造完整綠色休閒路網'],
+        conPoints: ['台北市已有 12 座運動中心均有淋浴間，恐造成市政資源重複配置', '特定族群（跑者、登山客）需求不應由全體納稅人買單', '市府已有特色運動站回饋計畫，應務實推動而非倉促普設'],
+      },
+      {
+        title: '公共便利開放 vs. 隱私與治安死角風險',
+        description: '公共盥洗更衣設施如何確保女性與公眾安全，避免淪為偷拍、騷擾或管理盲點？',
+        proPoints: ['可採智慧門禁、實名制卡片進出、明亮通透動線設計與定期巡邏防範', '將偏僻出入口活化為有人流的活力節點，反而減少原本的治安死角'],
+        conPoints: ['公共沐浴與更衣空間具高隱私敏感性，極易引發偷拍恐慌與性騷擾疑慮', '深夜或非熱門站點易淪為街友佔用或治安盲點，維安巡檢成本極高'],
+      },
+      {
+        title: '公帑基礎建設 vs. 營運清潔維護與自負盈虧',
+        description: '長期耗費的清潔、水電與維修成本，應由市府全額支應，或採使用者付費與公私協力（BOT）？',
+        proPoints: ['促進市民規律運動可降低健保與長照遠期支出，具長期公共利益價值', '可透過悠遊卡微額計費平衡部分耗材清潔成本'],
+        conPoints: ['淋浴設施清潔折舊極快，公部門維管容易淪為蚊子設施', '國外多為民間商業模式（如東京 Run Station），應回歸市場機制'],
+      },
+    ],
+  },
 ];
+
+const TOPIC_SAMPLE_QUESTIONS: Record<string, Partial<Record<SupportedLanguage, string[]>>> = {
+  nuclear4: {
+    'zh-TW': [
+      '「台灣的地震帶地質，會為核電廠帶來大災害的可能性嗎？」',
+      '「如果重啟核四，核廢料目前各國都是怎麼處理的？」',
+    ],
+    en: [
+      '"Could Taiwan\'s active seismic faults pose catastrophic risks to the nuclear plant?"',
+      '"If Nuclear 4 is restarted, how do other countries handle nuclear waste?"',
+    ],
+  },
+  'sports-station': {
+    'zh-TW': [
+      '「在捷運站或登山口設更衣淋浴間，會不會有偷拍或治安死角風險？」',
+      '「台北市已有 12 區運動中心與特色運動館，普設運動驛站真的有必要嗎？」',
+      '「過去大安森林公園與板橋田徑場跑站曾因虧損關閉，公營驛站如何永續運作？」',
+    ],
+    en: [
+      '"Would installing shower hubs at MRT stations create privacy or voyeurism risks?"',
+      '"Taipei already has 12 district sports centers; is deploying sports stations really necessary?"',
+      '"Given that past private runner stations closed due to deficits, how can public stations remain sustainable?"',
+    ],
+    ja: [
+      '「MRT駅や登山口へのシャワー室設置は、盗撮や防犯上の死角を生むリスクはありませんか？」',
+      '「台北市には既に12区にスポーツセンターがありますが、運動拠点を増設する必要はあるでしょうか？」',
+      '「かつて大安森林公園などにあった民間ランステは採算悪化で閉店しましたが、公設で持続可能でしょうか？」',
+    ],
+  },
+};
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(() => detectUserLanguage());
@@ -269,6 +326,18 @@ export default function App() {
   const historyList = historyByTopic[selectedTopic.id] || [];
   const viewedSession = viewingSessionId ? historyList.find((h) => h.id === viewingSessionId) : null;
   const activeMessages = viewedSession ? viewedSession.messages : currentLiveMessages;
+
+  const currentSampleQuestions =
+    TOPIC_SAMPLE_QUESTIONS[selectedTopic.id]?.[currentLang] ||
+    TOPIC_SAMPLE_QUESTIONS[selectedTopic.id]?.['zh-TW'] ||
+    t.sampleQuestions;
+
+  const currentLoadingMessage =
+    selectedTopic.id === 'sports-station'
+      ? (currentLang === 'zh-TW'
+          ? '審議引導助手正在檢索運動驛站政見、官方評估與市民質性論點並進行中立推理…'
+          : 'Topos Facilitator is retrieving debate records and synthesizing balanced insights…')
+      : t.loadingMessage;
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -643,7 +712,7 @@ export default function App() {
                 <div style={{ textAlign: 'center', color: '#6E5F50', fontSize: '14px', marginTop: '30px', lineHeight: 1.8 }}>
                   <div>{t.emptyChatPrompt}</div>
                   <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
-                    {t.sampleQuestions.map((q, qi) => (
+                    {currentSampleQuestions.map((q, qi) => (
                       <span
                         key={qi}
                         onClick={() => {
@@ -734,7 +803,7 @@ export default function App() {
               {loading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6E5F50', fontSize: '13px', fontStyle: 'italic', margin: '10px 0' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF2E88', animation: 'topos-pulse 1s infinite' }} />
-                  {t.loadingMessage}
+                  {currentLoadingMessage}
                 </div>
               )}
             </div>

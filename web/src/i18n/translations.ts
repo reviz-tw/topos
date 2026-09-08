@@ -614,4 +614,423 @@ export const TOPIC_TRANSLATIONS: Record<string, Record<SupportedLanguage, TopicT
       ],
     },
   },
+  'sports-station': {
+      "zh-TW": {
+          "category": "市政空間與體育政策",
+          "title": "台北市是否應於捷運站與登山口廣設「運動驛站」？",
+          "description": "探討 2026 台北市長選舉中關於在捷運站、登山步道口增設更衣與盥洗設施之政見，權衡日常運動便利性、公共安全隱私與市政財政運維負擔。",
+          "tags": [
+              "台北市政",
+              "運動友善",
+              "公共設施",
+              "治安隱私",
+              "2026市長選舉",
+              "捷運"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "日常運動門檻降低 vs. 現有運動中心資源重疊",
+                  "description": "點狀分布的簡易盥洗寄物設施是否真能提升運動頻率？還是應優先活化現有 12 區運動中心與特色站？",
+                  "proPoints": [
+                      "降低戶外運動後更衣盥洗門檻，有助通勤族與戶外運動者將運動融入日常",
+                      "市民反映爬山、外勤運將等有真實中途整裝與盥洗需求",
+                      "串聯山林徑、TPASS 打造完整綠色休閒路網"
+                  ],
+                  "conPoints": [
+                      "台北市已有 12 座運動中心均有淋浴間，恐造成市政資源重複配置",
+                      "特定族群（跑者、登山客）需求不應由全體納稅人買單",
+                      "市府已有特色運動站回饋計畫，應務實推動而非倉促普設"
+                  ]
+              },
+              {
+                  "title": "公共便利開放 vs. 隱私與治安死角風險",
+                  "description": "公共盥洗更衣設施如何確保女性與公眾安全，避免淪為偷拍、騷擾或管理盲點？",
+                  "proPoints": [
+                      "可採智慧門禁、實名制卡片進出、明亮通透動線設計與定期巡邏防範",
+                      "將偏僻出入口活化為有人流的活力節點，反而減少原本的治安死角"
+                  ],
+                  "conPoints": [
+                      "公共沐浴與更衣空間具高隱私敏感性，極易引發偷拍恐慌與性騷擾疑慮",
+                      "深夜或非熱門站點易淪為街友佔用或治安盲點，維安巡檢成本極高"
+                  ]
+              },
+              {
+                  "title": "公帑基礎建設 vs. 營運清潔維護與自負盈虧",
+                  "description": "長期耗費的清潔、水電與維修成本，應由市府全額支應，或採使用者付費與公私協力（BOT）？",
+                  "proPoints": [
+                      "促進市民規律運動可降低健保與長照遠期支出，具長期公共利益價值",
+                      "可透過悠遊卡微額計費平衡部分耗材清潔成本"
+                  ],
+                  "conPoints": [
+                      "淋浴設施清潔折舊極快，公部門維管容易淪為蚊子設施",
+                      "國外多為民間商業模式（如東京 Run Station），應回歸市場機制"
+                  ]
+              }
+          ]
+      },
+      "en": {
+          "category": "Municipal Space & Sports",
+          "title": "Should Taipei deploy \"Sports Stations\" at MRT hubs and trailheads?",
+          "description": "Examining the 2026 Taipei mayoral campaign proposal to install locker and shower facilities across transit and outdoor hubs—weighing lifestyle convenience against public safety, privacy, and municipal fiscal sustainability.",
+          "tags": [
+              "Taipei Policy",
+              "Sports Friendly",
+              "Public Infrastructure",
+              "Safety & Privacy",
+              "Mayoral Election"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "Lowering Exercise Barriers vs. Redundancy with Sports Centers",
+                  "description": "Do distributed shower and locker hubs truly boost workout frequency, or should the city prioritize optimizing existing district sports centers?",
+                  "proPoints": [
+                      "Eliminates post-workout hygiene barriers, helping commuters integrate exercise into daily routines",
+                      "Addresses real citizen pain points for hikers, workers, and delivery drivers",
+                      "Connects with mountain trails and public transit passes (TPASS) to foster a green recreation network"
+                  ],
+                  "conPoints": [
+                      "Taipei already has 12 fully equipped district sports centers with showers",
+                      "Niche outdoor demands should not be subsidized by all taxpayers",
+                      "The city is already expanding specialized sports centers pragmatically"
+                  ]
+              },
+              {
+                  "title": "Public Convenience vs. Privacy and Crime Vulnerability",
+                  "description": "How can public changing and shower hubs protect women and the public from voyeurism, hidden cameras, and surveillance blind spots?",
+                  "proPoints": [
+                      "Can implement smart electronic access, verified identity entry, well-lit transparent architecture, and scheduled patrols",
+                      "Revitalizes secluded entrances into active community nodes with natural foot traffic"
+                  ],
+                  "conPoints": [
+                      "Enclosed private shower stalls in public stations carry high voyeurism and harassment risks",
+                      "Off-peak and nocturnal hours risk unauthorized loitering and severe security management burdens"
+                  ]
+              },
+              {
+                  "title": "Taxpayer Infrastructure vs. Self-Sustaining Operations",
+                  "description": "Should recurring sanitation, utilities, and maintenance costs be funded by municipal budget, or driven by market fees and public-private partnerships (BOT)?",
+                  "proPoints": [
+                      "Preventive health and regular exercise lower long-term public healthcare expenditures",
+                      "Micro-fee charging via smartcards can offset consumable and cleaning expenses"
+                  ],
+                  "conPoints": [
+                      "Sanitary amenities suffer rapid wear and tear, risking becoming abandoned white elephants",
+                      "International counterparts (e.g. Tokyo Run Stations) operate commercially and should follow market dynamics"
+                  ]
+              }
+          ]
+      },
+      "ja": {
+          "category": "都市空間・スポーツ政策",
+          "title": "台北市は駅や登山口に「スポーツステーション」を整備すべきか？",
+          "description": "2026年台北市長選で提唱された、MRT駅や登山口へのロッカー・シャワー拠点設置政策の是非を、運動習慣の向上、プライバシーと防犯、財政維持の観点から議論します。",
+          "tags": [
+              "台北市政",
+              "スポーツ友好都市",
+              "公共施設",
+              "防犯とプライバシー",
+              "市長選挙"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "運動障壁の低減 vs 既存スポーツセンターとの重複",
+                  "description": "点在する簡易シャワー施設は運動頻度の向上に寄与するか、それとも既存の12区スポーツセンターを優先すべきか？",
+                  "proPoints": [
+                      "運動後の着替えやシャワーの不便を解消し、通勤者の日常的な運動習慣化を促進",
+                      "登山者や炎天下の屋外労働者による実質的な身だしなみ・休息ニーズに応える",
+                      "都市ハイキングコースや公共交通機関（TPASS）と連動した回遊網を構築"
+                  ],
+                  "conPoints": [
+                      "台北市には既にシャワー室完備のスポーツセンターが12施設あり重複投資の懸念がある",
+                      "特定のハイカーやランナー向け施設を全市民の税金で負担すべきではない",
+                      "市は既存の特色型スポーツ館の整備を着実に進めており拙速な設置は避けるべき"
+                  ]
+              },
+              {
+                  "title": "公共の利便性 vs プライバシー侵害・防犯上の死角リスク",
+                  "description": "公共スペースの更衣・シャワー施設において、盗撮や治安の死角をどのように防ぎ安全を確保するか？",
+                  "proPoints": [
+                      "スマート認証ゲート、実名制カード、視認性の高い動線設計、定期巡回により防止可能",
+                      "人通りの少なかった出入口を拠点化することで地域の防犯性を高める"
+                  ],
+                  "conPoints": [
+                      "駅構内の密閉シャワー空間は盗撮カメラ設置や犯罪の温床となるリスクが高い",
+                      "夜間や閑散時に不法滞在や治安の盲点となり維持管理負担が過大になる"
+                  ]
+              },
+              {
+                  "title": "公費によるインフラ投資 vs 運営清掃・独立採算性",
+                  "description": "清掃や水道光熱費などの維持管理費は市が全額補助すべきか、それとも利用者負担やPPP（官民連携）に委ねるべきか？",
+                  "proPoints": [
+                      "市民の健康増進による将来的な医療費削減効果という公共的価値がある",
+                      "交通系ICカードによる小額課金で消耗品や清掃コストを賄うことが可能"
+                  ],
+                  "conPoints": [
+                      "水回り設備は消耗と劣化が早く、維持管理が不十分であれば無駄な箱モノと化す恐れ",
+                      "東京のランナーズステーションのように民間ビジネスモデルとして自立させるべき"
+                  ]
+              }
+          ]
+      },
+      "ko": {
+          "category": "도시공간 및 체육정책",
+          "title": "타이베이시는 지하철역과 등산로 입구에 \"스포츠 스테이션\"을 설치해야 하는가?",
+          "description": "2026년 타이베이 시장 선거 공약인 환승역 및 등산로 주변 탈의·샤워 거점 조성 정책을 둘러싼 일상 운동 편의성, 범죄 예방 및 사생활 보호, 재정 유지관리 부담을 점검합니다.",
+          "tags": [
+              "타이베이 시정",
+              "운동 친화",
+              "공공시설",
+              "치안 및 프라이버시",
+              "시장 선거"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "운동 진입장벽 완화 vs 기존 스포츠센터 자원 중복",
+                  "description": "점자형 간이 샤워·보관 시설이 운동 빈도를 높일 수 있는가, 아니면 기존 12개 구 스포츠센터 활용이 우선인가?",
+                  "proPoints": [
+                      "운동 후 환복과 샤워 부담을 해소하여 통근자의 일상 운동 습관화 지원",
+                      "등산객 및 야외 근로자 등의 실질적인 휴식·정돈 수요 충족",
+                      "수도권 산악 트레일 및 대중교통 정기권과 연계한 생활 레저망 형성"
+                  ],
+                  "conPoints": [
+                      "타이베이 시내 12개 구민 스포츠센터에 이미 샤워 시설이 완비되어 중복 투자 우려",
+                      "일부 러너와 등산객만의 선호를 위해 전 시민의 세금을 투입하는 것은 부적절",
+                      "시 정부의 특화 스포츠관 확충 계획을 내실 있게 추진하는 것이 실질적 대안"
+                  ]
+              },
+              {
+                  "title": "공공 편의성 vs 사생활 침해 및 치안 사각지대 우려",
+                  "description": "공공 탈의·샤워 시설에서 몰래카메라 및 성범죄 등 치안 사각지대를 어떻게 예방할 것인가?",
+                  "proPoints": [
+                      "스마트 출입문, 실명제 카드 인증, 개방형 투명 동선 설계 및 정기 순찰로 방지 가능",
+                      "한적한 출입구를 유동 인구가 있는 거점으로 탈바꿈하여 오히려 사각지대 감소"
+                  ],
+                  "conPoints": [
+                      "대중교통 역사 내 폐쇄형 샤워 공간은 불법 촬영 및 사생활 침해 위험이 극히 높음",
+                      "야간 및 비혼잡 시간대에 노숙자 점유나 관리 공백으로 치안 유지 비용 급증"
+                  ]
+              },
+              {
+                  "title": "공공재정 기반 인프라 vs 운영 청결 관리 및 독립채산제",
+                  "description": "지속적인 청소, 수도광열비 및 시설 보수 비용을 시 예산으로 지원해야 하는가, 아니면 수익자 부담과 민관협력(BOT)에 맡겨야 하는가?",
+                  "proPoints": [
+                      "시민 건강 증진을 통해 장기적인 공공 보건 및 의료 재정 부담 절감",
+                      "교통카드 소액 결제를 통해 소모품과 위생 청소 비용 일부 충당 가능"
+                  ],
+                  "conPoints": [
+                      "샤워 시설은 노후화가 빠르고 위생 관리가 까다로워 방치 시 세금 낭비형 유휴시설로 전락할 위험",
+                      "도쿄의 러너스 스테이션처럼 시장 중심의 민간 비즈니스 모델로 운영하는 것이 바람직"
+                  ]
+              }
+          ]
+      },
+      "fr": {
+          "category": "Espace urbain et politique sportive",
+          "title": "Taipei devrait-il déployer des « Stations Sportives » près du métro et des sentiers ?",
+          "description": "Débat électoral de 2026 sur l'aménagement de vestiaires et douches aux nœuds de transport : concilier pratique sportive quotidienne, sécurité/intimité et viabilité budgétaire.",
+          "tags": [
+              "Politique municipale",
+              "Ville sportive",
+              "Infrastructures publiques",
+              "Sécurité et vie privée",
+              "Élections"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "Réduction des freins sportifs vs redondance avec les centres existants",
+                  "description": "Des hubs légers de douches augmentent-ils réellement la pratique, ou faut-il valoriser les 12 centres sportifs d'arrondissement ?",
+                  "proPoints": [
+                      "Supprime l'obstacle de l'hygiène après l'effort pour intégrer le sport au quotidien",
+                      "Répond aux besoins concrets des randonneurs, navetteurs et livreurs",
+                      "Complète les sentiers urbains et les forfaits de transport multimodal"
+                  ],
+                  "conPoints": [
+                      "Taipei dispose déjà de 12 centres omnisports équipés de douches complètes",
+                      "Le contribuable ne doit pas subventionner les besoins spécifiques d'une minorité",
+                      "La municipalité développe déjà des gymnases thématiques de façon pragmatique"
+                  ]
+              },
+              {
+                  "title": "Convivialité publique vs risques d'atteinte à l'intimité et zones d'insécurité",
+                  "description": "Comment garantir la protection contre les caméras espionnes et le harcèlement dans ces espaces fermés ?",
+                  "proPoints": [
+                      "Contrôle d'accès connecté par badge d'identité, architecture lumineuse et rondes régulières",
+                      "Revitalise des abords isolés en nœuds de vie surveillés et fréquentés"
+                  ],
+                  "conPoints": [
+                      "Les cabines de douche publiques fermées présentent des risques élevés de voyeurisme",
+                      "Risque d'appropriation indue la nuit et surcoûts considérables de sécurité"
+                  ]
+              },
+              {
+                  "title": "Financement public vs modèle économique autonome et concessions",
+                  "description": "Les coûts récurrents de nettoyage et d'énergie doivent-ils incomber à la ville ou à des partenariats privés (BOT) ?",
+                  "proPoints": [
+                      "La santé préventive et le sport régulier réduisent les coûts hospitaliers futurs",
+                      "Une micro-tarification par carte de transport peut amortir l'entretien"
+                  ],
+                  "conPoints": [
+                      "Les sanitaires humides se dégradent très vite et risquent de devenir des éléphants blancs",
+                      "À l'international (ex. Tokyo), ce service relève d'initiatives privées viables"
+                  ]
+              }
+          ]
+      },
+      "de": {
+          "category": "Stadtentwicklung & Sportpolitik",
+          "title": "Sollte Taipeh „Sport-Stationen“ an U-Bahnhöfen und Wanderwegen einrichten?",
+          "description": "Analyse des Wahlkampf-Vorschlags für die Bürgermeisterwahl 2026: Dusch- und Schließfach-Knotenpunkte an Haltestellen zwischen Bürgerkomfort, Privatsphäre und Haushaltsdisziplin.",
+          "tags": [
+              "Kommunalpolitik",
+              "Sportstadt",
+              "Öffentliche Infrastruktur",
+              "Privatsphäre & Sicherheit",
+              "Kommunalwahl"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "Niedrigschwelliger Sport vs. Doppelstrukturen zu Sportzentren",
+                  "description": "Steigern dezentrale Duschstationen die Trainingshäufigkeit oder sollten bestehende 12 Bezirks-Sportzentren ausgebaut werden?",
+                  "proPoints": [
+                      "Beseitigt hygienische Hürden nach dem Training für Pendler im Berufsalltag",
+                      "Erfüllt reale Bedürfnisse von Bergwanderern und Außenarbeitern",
+                      "Verknüpft Wanderrouten mit dem ÖPNV-Ticket TPASS zu einem grünen Wegenetz"
+                  ],
+                  "conPoints": [
+                      "Taipeh besitzt bereits 12 vollwertige Bezirks-Sportzentren mit Duschen",
+                      "Spezifische Hobbys von Läufern dürfen nicht vollständig auf Steuerzahler abgewälzt werden",
+                      "Stadtverwaltung baut bereits thematische Sporthallen bedarfsgerecht aus"
+                  ]
+              },
+              {
+                  "title": "Öffentlicher Nutzen vs. Überwachungs- und Sicherheitsrisiken",
+                  "description": "Wie können Duschkabinen vor versteckten Kameras, Belästigung und toten Winkeln geschützt werden?",
+                  "proPoints": [
+                      "Smarter Einlass per verifizierter Karte, transparente Wegeführung und Sicherheitskontrollen",
+                      "Belebt entlegene Tunneleingänge zu frequentierten urbanen Knotenpunkten"
+                  ],
+                  "conPoints": [
+                      "Abgeschlossene Duschzellen im Nahverkehr bergen gravierende Risiken für Voyeurismus",
+                      "Gefahr von Zweckentfremdung und enormer Kontrollaufwand zu Randzeiten"
+                  ]
+              },
+              {
+                  "title": "Öffentliche Daseinsvorsorge vs. Wirtschaftlichkeit und PPP-Modelle",
+                  "description": "Sollte die Stadt Betrieb und Reinigung finanzieren oder private Betreiber nach dem Verursacherprinzip einbinden?",
+                  "proPoints": [
+                      "Präventive Gesundheitsförderung spart langfristig hohe Ausgaben im Sozial- und Gesundheitswesen",
+                      "Kleinstgebühren über Nahverkehrskarten können Betriebskosten decken"
+                  ],
+                  "conPoints": [
+                      "Sanitäranlagen verschleißen rasant und werden ohne straffe Bewirtschaftung zu Investitionsruinen",
+                      "Internationale Vorbilder wie Tokyo Run Stations funktionieren als marktwirtschaftliche Betriebe"
+                  ]
+              }
+          ]
+      },
+      "es": {
+          "category": "Espacio municipal y política deportiva",
+          "title": "¿Debería Taipéi instalar «Estaciones Deportivas» en el metro y senderos?",
+          "description": "Evaluación de la propuesta para las elecciones a la alcaldía de 2026 sobre taquillas y duchas en estaciones de metro, sopesando comodidad, seguridad y sostenibilidad fiscal.",
+          "tags": [
+              "Política municipal",
+              "Ciudad deportiva",
+              "Infraestructura pública",
+              "Seguridad y privacidad",
+              "Elecciones"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "Reducción de barreras vs. redundancia con polideportivos existentes",
+                  "description": "¿Fomentan las duchas ligeras la frecuencia deportiva o debe priorizarse la red de 12 centros deportivos distritales?",
+                  "proPoints": [
+                      "Facilita el aseo tras el ejercicio integrándolo sin rodeos en la rutina laboral de los viajeros",
+                      "Satisface demandas reales de senderistas, transportistas y repartidores",
+                      "Se integra con la red de senderos periurbanos y abonos de transporte multimodal"
+                  ],
+                  "conPoints": [
+                      "Taipéi ya cuenta con 12 grandes polideportivos municipales con duchas completas",
+                      "Los gustos de colectivos específicos no deben ser financiados por todos los contribuyentes",
+                      "La alcaldía ya promueve pabellones temáticos de forma escalonada"
+                  ]
+              },
+              {
+                  "title": "Comodidad ciudadana vs. privacidad y riesgo de puntos ciegos",
+                  "description": "¿Cómo proteger a mujeres y usuarios frente a grabaciones ilegales y acoso en cabinas públicas?",
+                  "proPoints": [
+                      "Acceso inteligente con tarjeta nominativa, diseño abierto con visibilidad y vigilancia periódica",
+                      "Dinamiza accesos periféricos transformándolos en puntos concurridos y seguros"
+                  ],
+                  "conPoints": [
+                      "Cubículos de ducha cerrados en estaciones de tránsito generan temores fundados de espionaje",
+                      "Riesgo de ocupación indebida y costosos protocolos de inspección en horarios valle"
+                  ]
+              },
+              {
+                  "title": "Inversión pública vs. sostenibilidad operativa y gestión privada",
+                  "description": "¿Debe el municipio asumir la limpieza y mantenimiento o recurrir a tarifas de usuario y concesiones (BOT)?",
+                  "proPoints": [
+                      "La salud preventiva disminuye costes médicos a largo plazo para el sistema público",
+                      "El micropago mediante tarjeta inteligente contribuye a cubrir gastos de limpieza y agua"
+                  ],
+                  "conPoints": [
+                      "Las instalaciones de fontanería se degradan con rapidez y corren riesgo de abandono",
+                      "Modelos consolidados en el exterior (como Tokio) funcionan con éxito mediante iniciativa privada"
+                  ]
+              }
+          ]
+      },
+      "it": {
+          "category": "Spazio urbano e politiche sportive",
+          "title": "Taipei dovrebbe installare «Stazioni Sportive» presso metro e sentieri?",
+          "description": "Dibattito sulle elezioni comunali 2026 per la creazione di spogliatoi e docce alle stazioni: bilanciare accessibilità allo sport, privacy e sostenibilità del bilancio civico.",
+          "tags": [
+              "Politica municipale",
+              "Città dello sport",
+              "Infrastrutture pubbliche",
+              "Sicurezza e privacy",
+              "Elezioni"
+          ],
+          "keyCruxes": [
+              {
+                  "title": "Abbattimento delle barriere vs duplicazione con centri sportivi",
+                  "description": "Le postazioni leggere con doccia incentivano la frequenza di allenamento o conviene potenziare i 12 centri municipali?",
+                  "proPoints": [
+                      "Elimina l'ostacolo del sudore permettendo ai pendolari di allenarsi prima del lavoro",
+                      "Soddisfa le esigenze concrete di escursionisti, fattorini e lavoratori all'aperto",
+                      "Crea una rete continua integrata con sentieri collinari e abbonamenti di trasporto TPASS"
+                  ],
+                  "conPoints": [
+                      "Taipei dispone già di 12 centri sportivi distrettuali completi di docce e spogliatoi",
+                      "Le esigenze di nicchia dei runner non devono pesare sull'intera platea dei contribuenti",
+                      "Il comune sta già realizzando palestre tematiche secondo criteri di gradualità"
+                  ]
+              },
+              {
+                  "title": "Accessibilità pubblica vs tutela della privacy e rischio reati",
+                  "description": "Come prevenire microcamere nascoste e molestie all'interno di box doccia e spogliatoi pubblici?",
+                  "proPoints": [
+                      "Accesso con smart card nominativa, layout architettonico visibile e ronde regolari",
+                      "Rigenera ingressi secondari rendendoli nodi attivi e controllati dal flusso pedonale"
+                  ],
+                  "conPoints": [
+                      "Box doccia chiusi in snodi di transito sollevano timori fondati di voyeurismo e abusi",
+                      "Rischio di degrado nelle ore notturne con oneri elevatissimi di vigilanza e bonifica"
+                  ]
+              },
+              {
+                  "title": "Spesa pubblica per infrastrutture vs gestione autonoma e partenariati",
+                  "description": "I costi ricorrenti di sanificazione e utenze devono gravare sul comune o su formule di partenariato (BOT)?",
+                  "proPoints": [
+                      "La prevenzione sanitaria e l'attività fisica riducono nel tempo la spesa sanitaria pubblica",
+                      "Micro-tariffe con tessera elettronica possono coprire le spese vive di consumo e pulizia"
+                  ],
+                  "conPoints": [
+                      "Gli impianti idraulici subiscono un rapido deperimento con il rischio di cattedrali nel deserto",
+                      "All'estero (es. Run Station a Tokyo) tali servizi operano con successo su base commerciale"
+                  ]
+              }
+          ]
+      }
+  }
 };

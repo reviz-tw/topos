@@ -55,25 +55,29 @@ func NewEngine() *Engine {
 
 func (e *Engine) loadLocalDebates() {
 	candidates := []string{
-		"../../data/debates/nuclear4",
-		"data/debates/nuclear4",
-		"/app/data/debates/nuclear4",
-		"./data/debates/nuclear4",
+		"../../../data/debates",
+		"../../data/debates",
+		"data/debates",
+		"/app/data/debates",
+		"./data/debates",
 	}
 
-	for _, dir := range candidates {
-		files, err := os.ReadDir(dir)
-		if err == nil && len(files) > 0 {
-			for _, f := range files {
-				if strings.HasSuffix(f.Name(), ".md") {
-					content, err := os.ReadFile(filepath.Join(dir, f.Name()))
+	for _, root := range candidates {
+		info, err := os.Stat(root)
+		if err == nil && info.IsDir() {
+			_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+				if err == nil && !fi.IsDir() && strings.HasSuffix(fi.Name(), ".md") {
+					content, err := os.ReadFile(path)
 					if err == nil {
-						e.localDebatesCache[f.Name()] = string(content)
+						e.localDebatesCache[fi.Name()] = string(content)
 					}
 				}
+				return nil
+			})
+			if len(e.localDebatesCache) > 0 {
+				log.Printf("[RAG] Loaded %d debate transcript files from %s", len(e.localDebatesCache), root)
+				break
 			}
-			log.Printf("[RAG] Loaded %d debate transcript files from %s", len(e.localDebatesCache), dir)
-			break
 		}
 	}
 }
