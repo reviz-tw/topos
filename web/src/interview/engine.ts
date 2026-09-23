@@ -148,7 +148,7 @@ export function buildUserPrompt(
 
 export function generateLocalReply(
   settings: CreateHarmonicaSessionPayload,
-  _latestText: string,
+  latestText: string,
   turn: number,
   isFinal: boolean
 ): string {
@@ -156,22 +156,36 @@ export function generateLocalReply(
     if (settings.language === 'en') {
       return 'Thank you very much for taking the time to share your perspective. Your input has been recorded and will be summarized for public deliberation.';
     }
-    return '非常感謝您撥冗分享寶貴的想法。您的多元觀點已被客觀記錄，將作為公共審議與政策評估的重要參考。訪談在此圓滿結束！';
+    return '謝謝你花時間把想法說清楚。這些內容會被整理成逐字稿，納入審議分析。如果還有想補充的，隨時可以再開一輪。';
   }
 
-  // If next question exists, ask it
-  if (turn - 1 < settings.questions.length) {
-    const nextQ = settings.questions[turn - 1];
+  const snip = latestText.replace(/\s+/g, ' ').trim().slice(0, 18) + (latestText.length > 18 ? '…' : '');
+
+  const probesZh = [
+    '如果要讓你改變想法或完全放心，你覺得需要看到什麼具體的科學數據或制度保證？',
+    '這項議題對你身邊的人——家人、工作或社區，最直接的影響會是什麼？',
+    '在「供電穩定」、「安全風險」與「環境永續」之間，你心目中的優先順序是什麼？',
+    '有沒有哪種說法是你常聽過，但始終無法接受或抱持懷疑的？為什麼？',
+  ];
+
+  if (turn % 2 === 1) {
     if (settings.language === 'en') {
-      return `Thank you for sharing that. Following up on your points: ${nextQ}`;
+      return `You mentioned "${snip}" — could you elaborate a bit more on that? What experience or reasoning leads you to this view?`;
     }
-    return `謝謝您的具體說明。延續剛才的話題，想請教您：${nextQ}`;
+    return `你提到「${snip}」——可以多說一點嗎？是什麼經驗或資訊讓你這樣想？`;
   }
 
-  if (settings.language === 'en') {
-    return 'That makes a lot of sense. Could you elaborate a bit more on what specific conditions or priorities matter most to you?';
+  const qi = Math.floor(turn / 2);
+  if (settings.questions && settings.questions[qi]) {
+    const nextQ = settings.questions[qi];
+    if (settings.language === 'en') {
+      return `Understood, thank you. Looking from another angle: ${nextQ}`;
+    }
+    return `了解，謝謝你的分享。換個角度想：${nextQ}`;
   }
-  return '理解您的考量。在剛才提到的內容中，您認為最重要的優先順序或關鍵配套會是什麼？';
+
+  const pIdx = Math.floor(turn / 2) % probesZh.length;
+  return probesZh[pIdx];
 }
 
 export function formatTTTCCsv(session: HarmonicaSession, conversations: HarmonicaConversation[]): string {

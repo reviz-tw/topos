@@ -6,17 +6,27 @@ const DEFAULT_TOPIC_SESSIONS = {
     {
       sessionId: '6o0ryapw2o',
       title: '核電重啟公眾訪談',
-      goal: '測試與收集核電重啟之條件、顧慮與多元考量',
+      goal: '測試與收集核電重啟之條件、顧慮與多元考量。',
       url: '/s/6o0ryapw2o',
       isDefault: true,
       createdAt: 1790167501,
+    },
+  ],
+  'control-yuan': [
+    {
+      sessionId: 'cy-voices-01',
+      title: '監察與考試權公眾訪談',
+      goal: '理解民眾對監察權、考試權存廢的經驗、擔憂與期待。',
+      url: '/s/cy-voices-01',
+      isDefault: true,
+      createdAt: 1790170000,
     },
   ],
   'sports-station': [
     {
       sessionId: 'sports-int-1',
       title: '運動驛站公眾訪談',
-      goal: '探討公眾對捷運站盥洗寄物設施之需求、衛生管理與預算自償考量',
+      goal: '探討公眾對捷運站盥洗寄物設施之需求、衛生管理與預算自償考量。',
       url: '/s/sports-int-1',
       isDefault: true,
       createdAt: 1790167501,
@@ -29,17 +39,21 @@ const MEMORY_SESSIONS = new Map([
     '6o0ryapw2o',
     {
       sessionId: '6o0ryapw2o',
-      topic: '核電重啟',
-      goal: '測試與收集核電重啟之條件、顧慮與多元考量',
+      topic: '核電重啟公眾訪談',
+      goal: '測試與收集核電重啟之條件、顧慮與多元考量。',
       context: '探討台灣能源轉型與核四重啟之關鍵爭點與各方考量。',
-      questions: ['支持嗎', '要錢嗎', '其他原因'],
+      questions: [
+        '對於核電重啟，你的基本立場是什麼？最在意的是哪一點？',
+        '如果真的要重啟，你認為必須先滿足哪些條件？',
+        '核廢料該怎麼處理，你心中有能接受的做法嗎？',
+      ],
       language: 'zh-Hant',
       status: 'open',
       maxTurns: 6,
       maxParticipants: 50,
       askAlias: true,
-      participants: 1,
-      completed: 0,
+      participants: 2,
+      completed: 1,
       model: '@cf/google/gemma-4-26b-a4b-it',
       adminToken: 'admin-nuclear4-topos',
     },
@@ -355,34 +369,67 @@ export default {
         // If Workers AI is bound, call @cf/google/gemma-4-26b-a4b-it
         if (env && env.AI) {
           try {
+            const systemPrompt = `你是一位客觀、中立、同理心強的公眾政策審議訪談員，正在進行「${session.topic}」的一對一訪談。
+訪談核心目標：${session.goal}
+訪談準則：
+1. 嚴格保持中立：不評判對錯、不試圖說服對方、不表達任何政策偏好。
+2. 同理與摘要：先用一句話真誠反映並摘要受訪者剛才提及的感受、顧慮或核心論點。
+3. 具體深化追問：順著受訪者的話，提出「一個」開放式問題，探究其背後的切身經驗、前提條件、價值排序或關鍵顧慮。
+4. 全程使用流暢自然的繁體中文，字數限制在 60~90 字之間。直接輸出回覆文字，不可夾帶思考標籤或角色前綴。`;
+
+            const historyMsgs = [{ role: 'system', content: systemPrompt }];
+            // Include recent dialogue history for rich context
+            const recent = conv.messages.slice(-6);
+            for (const m of recent) {
+              if (m.text && m.text.trim()) {
+                historyMsgs.push({
+                  role: m.role === 'interviewer' ? 'assistant' : 'user',
+                  content: m.text,
+                });
+              }
+            }
+
+            if (isFinal) {
+              historyMsgs.push({
+                role: 'user',
+                content: '（最後一輪）：請誠摯感謝受訪者花時間把想法說得這麼清楚，總結肯定其寶貴貢獻，圓滿結尾，不要再提出新問題。',
+              });
+            }
+
             const aiRes = await env.AI.run('@cf/google/gemma-4-26b-a4b-it', {
-              messages: [
-                {
-                  role: 'system',
-                  content: `You are a warm, neutral interviewer for a public consultation on "${session.topic}". Reflect briefly what you heard, then ask exactly one follow-up question. Never argue, evaluate or persuade. Keep under 90 words. Reply with plain text.`,
-                },
-                {
-                  role: 'user',
-                  content: isFinal
-                    ? `Turn ${conv.turns} of ${session.maxTurns}. FINAL TURN: thank the participant, reflect the most important thing they said, and close without asking anything. Participant said: ${text}`
-                    : `Turn ${conv.turns} of ${session.maxTurns}. Participant said: ${text}`,
-                },
-              ],
-              max_tokens: 384,
-              temperature: 0.4,
-              chat_template_kwargs: { enable_thinking: false },
+              messages: historyMsgs,
+              max_tokens: 300,
+              temperature: 0.5,
             });
             replyText = aiRes?.response || '';
-          } catch (_) {}
+          } catch (e) {
+            console.error('Workers AI invocation error:', e);
+          }
         }
 
+        // Intelligent deliberative fallback if Workers AI is offline
         if (!replyText) {
           if (isFinal) {
-            replyText = '非常感謝您撥冗分享寶貴的想法。您的多元觀點已被客觀記錄，將作為公共審議與政策評估的重要參考。訪談在此圓滿結束！';
-          } else if (conv.turns - 1 < session.questions.length) {
-            replyText = `謝謝您的具體說明。延續剛才的話題，想請教您：${session.questions[conv.turns - 1]}`;
+            replyText = '謝謝你花時間把想法說清楚。這些內容會被整理成逐字稿，納入審議分析。如果還有想補充的，隨時可以再開一輪。';
           } else {
-            replyText = '理解您的考量。在剛才提到的內容中，您認為最重要的優先順序或關鍵配套會是什麼？';
+            const snip = text.replace(/\s+/g, ' ').trim().slice(0, 18) + (text.length > 18 ? '…' : '');
+            const probes = [
+              '如果要讓你改變想法或完全放心，你覺得需要看到什麼具體的科學數據或制度保證？',
+              '這項議題對你身邊的人——家人、工作或社區，最直接的影響會是什麼？',
+              '在「供電穩定」、「安全風險」與「環境永續」之間，你心目中的優先順序是什麼？',
+              '有沒有哪種說法是你常聽過，但始終無法接受或抱持懷疑的？為什麼？',
+            ];
+
+            if (conv.turns % 2 === 1) {
+              replyText = `你提到「${snip}」——可以多說一點嗎？是什麼經驗或資訊讓你這樣想？`;
+            } else {
+              const qi = Math.floor(conv.turns / 2);
+              if (session.questions && session.questions[qi]) {
+                replyText = `了解，謝謝你的分享。換個角度想：${session.questions[qi]}`;
+              } else {
+                replyText = probes[Math.floor(conv.turns / 2) % probes.length] || probes[0];
+              }
+            }
           }
         }
 

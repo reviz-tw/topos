@@ -132,6 +132,15 @@ export const HarmonicaInterview: React.FC<HarmonicaInterviewProps> = ({ topic, t
     // 1. Load local copy first (0 latency)
     const localSess = HarmonicaLocalStore.getSession(activeSessionId);
     if (localSess) {
+      if (localSess.questions?.some((q) => q === '要錢嗎' || q === '支持嗎' || q === '其他原因')) {
+        localSess.questions = [
+          '對於核電重啟，你的基本立場是什麼？最在意的是哪一點？',
+          '如果真的要重啟，你認為必須先滿足哪些條件？',
+          '核廢料該怎麼處理，你心中有能接受的做法嗎？',
+        ];
+        localSess.topic = '核電重啟公眾訪談';
+        HarmonicaLocalStore.saveSession(localSess);
+      }
       setSessionData(localSess);
     }
 

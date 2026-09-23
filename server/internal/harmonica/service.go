@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -64,10 +65,14 @@ func NewService(ragEngine ...*rag.Engine) *Service {
 
 	// Seed default session for nuclear4
 	n4Settings := SessionSettings{
-		Topic:           "核電重啟",
-		Goal:            "測試與收集核電重啟之條件、顧慮與多元考量",
+		Topic:           "核電重啟公眾訪談",
+		Goal:            "測試與收集核電重啟之條件、顧慮與多元考量。",
 		Context:         "探討台灣能源轉型、地質耐震與核廢料處置之爭點。",
-		Questions:       []string{"支持嗎", "要錢嗎", "其他原因"},
+		Questions: []string{
+			"對於核電重啟，你的基本立場是什麼？最在意的是哪一點？",
+			"如果真的要重啟，你認為必須先滿足哪些條件？",
+			"核廢料該怎麼處理，你心中有能接受的做法嗎？",
+		},
 		Language:        LangZhHant,
 		MaxTurns:        6,
 		MaxParticipants: 50,
@@ -406,22 +411,38 @@ func localInterviewerFallback(settings SessionSettings, userPrompt, latest strin
 		if settings.Language == LangEn {
 			return "Thank you very much for taking the time to share your perspective. Your input has been recorded and will be summarized for public deliberation."
 		}
-		return "非常感謝你撥冗分享寶貴的想法。這些多元觀點都已被完整記錄，將作為公共審議與政策評估的重要參考。訪談在此圓滿結束！"
+		return "謝謝你花時間把想法說清楚。這些內容會被整理成逐字稿，納入審議分析。如果還有想補充的，隨時可以再開一輪。"
 	}
 
-	// Ask next question or follow up
-	if turn-1 < len(settings.Questions) {
-		nextQ := settings.Questions[turn-1]
+	snip := strings.TrimSpace(latest)
+	runes := []rune(snip)
+	if len(runes) > 18 {
+		snip = string(runes[:18]) + "…"
+	}
+
+	probes := []string{
+		"如果要讓你改變想法或完全放心，你覺得需要看到什麼具體的科學數據或制度保證？",
+		"這項議題對你身邊的人——家人、工作或社區，最直接的影響會是什麼？",
+		"在「供電穩定」、「安全風險」與「環境永續」之間，你心目中的優先順序是什麼？",
+		"有沒有哪種說法是你常聽過，但始終無法接受或抱持懷疑的？為什麼？",
+	}
+
+	if turn%2 == 1 {
 		if settings.Language == LangEn {
-			return fmt.Sprintf("Thank you for sharing. Following up on that: %s", nextQ)
+			return fmt.Sprintf("You mentioned \"%s\" — could you elaborate a bit more on that? What experience leads you to this view?", snip)
 		}
-		return fmt.Sprintf("謝謝你具體的分享。延續剛才的話題，想請教：%s", nextQ)
+		return fmt.Sprintf("你提到「%s」——可以多說一點嗎？是什麼經驗或資訊讓你這樣想？", snip)
 	}
 
-	if settings.Language == LangEn {
-		return "That makes a lot of sense. Could you elaborate a bit more on what specific conditions or priorities matter most to you?"
+	qi := turn / 2
+	if qi < len(settings.Questions) {
+		if settings.Language == LangEn {
+			return fmt.Sprintf("Understood, thank you. Looking from another angle: %s", settings.Questions[qi])
+		}
+		return fmt.Sprintf("了解，謝謝你的分享。換個角度想：%s", settings.Questions[qi])
 	}
-	return "理解您的考量。在剛才提到的內容中，您認為最重要的優先順序或關鍵配套會是什麼？"
+
+	return probes[(turn/2)%len(probes)]
 }
 
 // ExportTTTCCsv returns the Talk to the City formatted CSV for a session.
