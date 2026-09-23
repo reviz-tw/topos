@@ -84,7 +84,7 @@ func main() {
 	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
 	authHandler := auth.NewAuthenticator(googleClientID, 30)
 	ragEngine := rag.NewEngine()
-	harmonicaService := harmonica.NewService()
+	harmonicaService := harmonica.NewService(ragEngine)
 	mcpServer := mcp.NewServer(ragEngine, defaultTopics)
 
 	mux := http.NewServeMux()
@@ -101,7 +101,7 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{
 			"googleClientId":         googleClientID,
 			"defaultHarmonicaSession": "6o0ryapw2o",
-			"harmonicaOrigin":        harmonica.DefaultHarmonicaOrigin,
+			"harmonicaOrigin":        "",
 			"aiModel":                "@cf/google/gemma-4-26b-a4b-it",
 		})
 	})
@@ -136,11 +136,14 @@ func main() {
 		http.Error(w, `{"error":"topic not found"}`, http.StatusNotFound)
 	})
 
-	// 5. Harmonica Session Management & Proxy
+	// 5. Native Pocket Harmonica Interview Engine
 	mux.HandleFunc("POST /api/harmonica/sessions", harmonicaService.HandleCreateSession)
 	mux.HandleFunc("GET /api/harmonica/sessions/{id}", harmonicaService.HandleGetSession)
+	mux.HandleFunc("GET /api/harmonica/sessions/{id}/host", harmonicaService.HandleGetHost)
 	mux.HandleFunc("POST /api/harmonica/sessions/{id}/join", harmonicaService.HandleJoinSession)
 	mux.HandleFunc("POST /api/harmonica/sessions/{id}/messages", harmonicaService.HandleSendMessage)
+	mux.HandleFunc("GET /api/harmonica/sessions/{id}/export/tttc.csv", harmonicaService.HandleExportCsv)
+	mux.HandleFunc("GET /api/harmonica/sessions/{id}/export/transcripts.json", harmonicaService.HandleExportJSON)
 
 	// 6. Topic Harmonica Session Association
 	mux.HandleFunc("GET /api/topics/{id}/harmonica/sessions", harmonicaService.HandleGetTopicSessions)

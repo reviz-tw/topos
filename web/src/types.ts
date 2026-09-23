@@ -31,6 +31,7 @@ export interface HarmonicaSession {
   participants?: number;
   completed?: number;
   model?: string;
+  adminToken?: string;
 }
 
 export interface HarmonicaMessage {
@@ -46,6 +47,22 @@ export interface HarmonicaConversation {
   turns: number;
   done: boolean;
   messages: HarmonicaMessage[];
+  updatedAt?: number;
+}
+
+export interface HostConversationSummary {
+  participant: number;
+  alias?: string;
+  turns: number;
+  done: boolean;
+  messages: number;
+  updatedAt?: number;
+  lastMessage?: string;
+}
+
+export interface HarmonicaHostView extends HarmonicaSession {
+  conversations: HarmonicaConversation[];
+  summaries?: HostConversationSummary[];
 }
 
 export interface CreateHarmonicaSessionPayload {
