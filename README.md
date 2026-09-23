@@ -7,17 +7,23 @@
 ## 架構設計
 
 ```
-[ 使用者瀏覽器 (React + Google One Tap) ]
+[ 使用者瀏覽器 (React + TypeScript Neo-Brutalist UI) ]
+   ├── 模式一：【觀點思辨與爭點探索】(Cruxes & Deliberation Chat)
+   └── 模式二：【一對一 AI 訪談 (Harmonica)】
+         ├── 連接指定訪談 (預設核電重啟: 6o0ryapw2o / 或貼入任意 Session ID)
+         ├── ➕ 「發起新訪談」(可一鍵將議題爭點 Cruxes 自動轉為推薦提綱)
+         └── 訪談對話匯出 (tttc.csv / JSON)
                    │
-                   ▼ (Authorization: Bearer <Google ID Token>)
+                   ▼ (HTTP API / CORS Proxy)
 [ GCP Cloud Run (Go Server: topos-server) ]
-     ├─ Google ID Token 驗證 & 每小時 Rate Limiting (防濫用)
-     ├─ 檢索模組 (Vertex AI Search Data Store / 本機逐字稿)
-     └─ 推理模組 (Cloudflare Workers AI 支援 Google Gemma / Qwen)
+   ├─ Google ID Token 驗證 & Rate Limiter (防濫用)
+   ├─ 檢索模組 (Vertex AI Search Data Store / 本機逐字稿)
+   ├─ Harmonica 服務模組 (/api/harmonica/* 代理與會話關聯)
+   └─ 推理模組 (Cloudflare Workers AI: 免費 Google Gemma 4 @cf/google/gemma-4-26b-a4b-it)
                    │
                    ▼
 [ GCP GCS Bucket (gs://topos-data-elix-498805) ]
-     └─ 2021 核四公投 5 場辯論會逐字稿 (READr CC0 授權)
+   └─ 2021 核四公投 5 場辯論會逐字稿 (READr CC0 授權)
 ```
 
 ---
@@ -28,17 +34,22 @@
 topos/
 ├── data/
 │   └── debates/
-│       └── nuclear4/             # 5 場辯論完整逐字稿 (.md)
+│       ├── nuclear4/             # 5 場辯論完整逐字稿 (.md)
+│       └── sports_station/       # 台北市運動驛站辯論與公聽會資料 (.md)
 ├── scripts/
 │   └── fetch_debates.py          # 下載與整理逐字稿腳本
 ├── server/                       # Go 後端 (Cloud Run)
-│   ├── cmd/server/main.go        # HTTP 路由、審議對話 API
+│   ├── cmd/server/main.go        # HTTP 路由、審議對話 & Harmonica API
 │   ├── internal/auth/            # Google Identity 驗證與 Rate Limiter
-│   ├── internal/models/          # 議題、爭點、訊息資料結構
-│   ├── internal/rag/             # 檢索與 Cloudflare Google Gemma 推理引擎
+│   ├── internal/harmonica/       # Pocket Harmonica 訪談代理與多會話管理服務
+│   ├── internal/models/          # 議題、爭點、訊息與訪談資料結構
+│   ├── internal/rag/             # 檢索與 Cloudflare Google Gemma 4 推理引擎
 │   └── Dockerfile                # 多階段超輕量 Distroless 容器
-├── web/                          # 前端 (React + TypeScript)
-│   ├── src/App.tsx               # 議題瀏覽、爭點卡片、Google One Tap 登入
+├── web/                          # 前端 (React + TypeScript + Tailwind)
+│   ├── src/components/
+│   │   ├── HarmonicaInterview.tsx# 一對一 AI 訪談、進度條、匯出與發起新訪談組件
+│   │   └── LanguageSelector.tsx  # 多語系切換器
+│   ├── src/App.tsx               # 雙模式切換、議題瀏覽、爭點卡片
 │   └── index.html                # 引入 Google Identity Services
 └── cloudbuild.yaml               # GCP Cloud Build 自動部署至 Cloud Run
 ```

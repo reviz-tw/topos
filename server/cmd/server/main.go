@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/reviz-tw/topos/server/internal/auth"
+	"github.com/reviz-tw/topos/server/internal/harmonica"
 	"github.com/reviz-tw/topos/server/internal/mcp"
 	"github.com/reviz-tw/topos/server/internal/models"
 	"github.com/reviz-tw/topos/server/internal/rag"
@@ -83,6 +84,7 @@ func main() {
 	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
 	authHandler := auth.NewAuthenticator(googleClientID, 30)
 	ragEngine := rag.NewEngine()
+	harmonicaService := harmonica.NewService()
 	mcpServer := mcp.NewServer(ragEngine, defaultTopics)
 
 	mux := http.NewServeMux()
@@ -97,7 +99,10 @@ func main() {
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"googleClientId": googleClientID,
+			"googleClientId":         googleClientID,
+			"defaultHarmonicaSession": "6o0ryapw2o",
+			"harmonicaOrigin":        harmonica.DefaultHarmonicaOrigin,
+			"aiModel":                "@cf/google/gemma-4-26b-a4b-it",
 		})
 	})
 
@@ -109,7 +114,12 @@ func main() {
 	// 3. Topics listing (Public)
 	mux.HandleFunc("GET /api/topics", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(defaultTopics)
+		topicsWithSessions := make([]models.Topic, len(defaultTopics))
+		for i, t := range defaultTopics {
+			topicsWithSessions[i] = t
+			topicsWithSessions[i].HarmonicaSessions = harmonicaService.GetTopicSessions(t.ID)
+		}
+		json.NewEncoder(w).Encode(topicsWithSessions)
 	})
 
 	// 4. Topic detail / summary (Public)
@@ -117,6 +127,7 @@ func main() {
 		id := r.PathValue("id")
 		for _, t := range defaultTopics {
 			if t.ID == id {
+				t.HarmonicaSessions = harmonicaService.GetTopicSessions(t.ID)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(t)
 				return
@@ -124,6 +135,16 @@ func main() {
 		}
 		http.Error(w, `{"error":"topic not found"}`, http.StatusNotFound)
 	})
+
+	// 5. Harmonica Session Management & Proxy
+	mux.HandleFunc("POST /api/harmonica/sessions", harmonicaService.HandleCreateSession)
+	mux.HandleFunc("GET /api/harmonica/sessions/{id}", harmonicaService.HandleGetSession)
+	mux.HandleFunc("POST /api/harmonica/sessions/{id}/join", harmonicaService.HandleJoinSession)
+	mux.HandleFunc("POST /api/harmonica/sessions/{id}/messages", harmonicaService.HandleSendMessage)
+
+	// 6. Topic Harmonica Session Association
+	mux.HandleFunc("GET /api/topics/{id}/harmonica/sessions", harmonicaService.HandleGetTopicSessions)
+	mux.HandleFunc("POST /api/topics/{id}/harmonica/sessions", harmonicaService.HandleAddTopicSession)
 
 	// 5. Topic deliberation chat (Protected by Google Auth & Rate Limiter)
 	chatHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

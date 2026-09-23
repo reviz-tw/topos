@@ -2,12 +2,23 @@ package models
 
 // Topic represents an issue open for public deliberation.
 type Topic struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Category    string   `json:"category"`
-	Tags        []string `json:"tags"`
-	KeyCruxes   []Crux   `json:"keyCruxes"` // 核心爭議焦點
+	ID                string                `json:"id"`
+	Title             string                `json:"title"`
+	Description       string                `json:"description"`
+	Category          string                `json:"category"`
+	Tags              []string              `json:"tags"`
+	KeyCruxes         []Crux                `json:"keyCruxes"` // 核心爭議焦點
+	HarmonicaSessions []HarmonicaSessionRef `json:"harmonicaSessions,omitempty"` // 關聯的一對一 AI 訪談工作階段
+}
+
+// HarmonicaSessionRef links a Topic to a Pocket Harmonica deliberation interview session.
+type HarmonicaSessionRef struct {
+	SessionID   string `json:"sessionId"`
+	Title       string `json:"title"`
+	Goal        string `json:"goal,omitempty"`
+	URL         string `json:"url,omitempty"`
+	IsDefault   bool   `json:"isDefault,omitempty"`
+	CreatedAt   int64  `json:"createdAt,omitempty"`
 }
 
 // Crux represents a critical disagreement point within an issue.

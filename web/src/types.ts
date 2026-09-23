@@ -5,6 +5,59 @@ export interface Topic {
   category: string;
   tags: string[];
   keyCruxes: Crux[];
+  harmonicaSessions?: HarmonicaSessionRef[];
+}
+
+export interface HarmonicaSessionRef {
+  sessionId: string;
+  title: string;
+  goal?: string;
+  url?: string;
+  isDefault?: boolean;
+  createdAt?: number;
+}
+
+export interface HarmonicaSession {
+  sessionId: string;
+  topic: string;
+  goal: string;
+  context?: string;
+  questions: string[];
+  language?: string;
+  status: 'open' | 'closed' | 'deleted';
+  maxTurns: number;
+  maxParticipants: number;
+  askAlias: boolean;
+  participants?: number;
+  completed?: number;
+  model?: string;
+}
+
+export interface HarmonicaMessage {
+  seq?: number;
+  role: 'interviewer' | 'participant';
+  text: string;
+  at?: number;
+}
+
+export interface HarmonicaConversation {
+  participant: number;
+  alias?: string;
+  turns: number;
+  done: boolean;
+  messages: HarmonicaMessage[];
+}
+
+export interface CreateHarmonicaSessionPayload {
+  topic: string;
+  goal: string;
+  context?: string;
+  critical?: string;
+  questions: string[];
+  language: string;
+  maxTurns: number;
+  maxParticipants: number;
+  askAlias: boolean;
 }
 
 export interface Crux {

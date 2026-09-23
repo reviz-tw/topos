@@ -31,7 +31,7 @@ type Engine struct {
 func NewEngine() *Engine {
 	model := os.Getenv("CLOUDFLARE_MODEL")
 	if model == "" {
-		model = "@cf/google/gemma-2-9b-it"
+		model = "@cf/google/gemma-4-26b-a4b-it"
 	}
 
 	projectID := os.Getenv("GCP_PROJECT_ID")
@@ -344,7 +344,7 @@ func (e *Engine) callVertexAI(ctx context.Context, systemPrompt string, history 
 	return vertexResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
-func (e *Engine) callCloudflareAI(ctx context.Context, systemPrompt string, history []models.ChatMessage) (string, error) {
+func (e *Engine) CallCloudflareAI(ctx context.Context, systemPrompt string, history []models.ChatMessage, maxTokens int) (string, error) {
 	if e.cloudflareAccountID == "" || e.cloudflareAPIToken == "" {
 		return "", fmt.Errorf("cloudflare credentials not configured")
 	}
@@ -363,9 +363,20 @@ func (e *Engine) callCloudflareAI(ctx context.Context, systemPrompt string, hist
 		msgs = append(msgs, cfMsg{Role: m.Role, Content: m.Content})
 	}
 
-	reqBody, _ := json.Marshal(map[string]interface{}{
-		"messages": msgs,
-	})
+	if maxTokens <= 0 {
+		maxTokens = 512
+	}
+
+	payload := map[string]interface{}{
+		"messages":    msgs,
+		"max_tokens":  maxTokens,
+		"temperature": 0.4,
+		"chat_template_kwargs": map[string]interface{}{
+			"enable_thinking": false,
+		},
+	}
+
+	reqBody, _ := json.Marshal(payload)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
@@ -381,21 +392,54 @@ func (e *Engine) callCloudflareAI(ctx context.Context, systemPrompt string, hist
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("cloudflare AI error (%d): %s", resp.StatusCode, string(b))
-	}
-
-	var cfResp struct {
-		Result struct {
-			Response string `json:"response"`
-		} `json:"result"`
-		Success bool `json:"success"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&cfResp); err != nil {
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return "", err
 	}
 
-	return cfResp.Result.Response, nil
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("cloudflare AI error (%d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &raw); err != nil {
+		return "", err
+	}
+
+	result, ok := raw["result"]
+	if !ok || result == nil {
+		return "", fmt.Errorf("missing result in Cloudflare AI response")
+	}
+
+	extracted := extractTextFromResult(result)
+	if extracted == "" {
+		return "", fmt.Errorf("empty text extracted from Cloudflare AI response: %s", string(bodyBytes))
+	}
+
+	return extracted, nil
+}
+
+func (e *Engine) callCloudflareAI(ctx context.Context, systemPrompt string, history []models.ChatMessage) (string, error) {
+	return e.CallCloudflareAI(ctx, systemPrompt, history, 512)
+}
+
+func extractTextFromResult(result interface{}) string {
+	if s, ok := result.(string); ok {
+		return strings.TrimSpace(s)
+	}
+	if rec, ok := result.(map[string]interface{}); ok {
+		if respStr, ok := rec["response"].(string); ok && respStr != "" {
+			return strings.TrimSpace(respStr)
+		}
+		if choices, ok := rec["choices"].([]interface{}); ok && len(choices) > 0 {
+			if first, ok := choices[0].(map[string]interface{}); ok {
+				if msg, ok := first["message"].(map[string]interface{}); ok {
+					if content, ok := msg["content"].(string); ok {
+						return strings.TrimSpace(content)
+					}
+				}
+			}
+		}
+	}
+	return ""
 }

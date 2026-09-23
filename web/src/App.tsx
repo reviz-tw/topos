@@ -11,6 +11,7 @@ import {
   TOPIC_TRANSLATIONS,
 } from './i18n/translations';
 import { LanguageSelector } from './components/LanguageSelector';
+import { HarmonicaInterview } from './components/HarmonicaInterview';
 
 // Declare Google Identity Services global
 declare global {
@@ -127,6 +128,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [remainingQuota, setRemainingQuota] = useState<number>(5);
   const [googleClientId, setGoogleClientId] = useState<string>(import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
+  const [activeMode, setActiveMode] = useState<'deliberation' | 'harmonica'>('deliberation');
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS['zh-TW'];
 
@@ -675,8 +677,54 @@ export default function App() {
             </div>
           </div>
 
-          {/* Deliberation Chat Facilitator */}
-          <div style={{ background: '#FFFCF1', border: '2.5px solid #100C0A', borderRadius: '18px', padding: 'clamp(20px,3vw,28px)', boxShadow: '8px 8px 0 #100C0A', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Mode Switcher Tabs */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setActiveMode('deliberation')}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '10px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '13px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                border: '2.5px solid #100C0A',
+                background: activeMode === 'deliberation' ? '#100C0A' : '#FFFCF1',
+                color: activeMode === 'deliberation' ? '#FFF7E4' : '#100C0A',
+                boxShadow: activeMode === 'deliberation' ? '4px 4px 0 #FFF1A6' : '3px 3px 0 #100C0A',
+                transition: '0.1s ease',
+                transform: activeMode === 'deliberation' ? 'translate(-1px,-1px)' : 'none',
+              }}
+            >
+              {t.tabDeliberation}
+            </button>
+            <button
+              onClick={() => setActiveMode('harmonica')}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '10px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '13px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                border: '2.5px solid #100C0A',
+                background: activeMode === 'harmonica' ? '#00E5A3' : '#FFFCF1',
+                color: '#100C0A',
+                boxShadow: activeMode === 'harmonica' ? '4px 4px 0 #100C0A' : '3px 3px 0 #100C0A',
+                transition: '0.1s ease',
+                transform: activeMode === 'harmonica' ? 'translate(-1px,-1px)' : 'none',
+              }}
+            >
+              {t.tabHarmonica}
+            </button>
+          </div>
+
+          {activeMode === 'harmonica' ? (
+            <HarmonicaInterview topic={selectedTopic} t={t} apiBase={API_BASE} />
+          ) : (
+            <>
+              {/* Deliberation Chat Facilitator */}
+              <div style={{ background: '#FFFCF1', border: '2.5px solid #100C0A', borderRadius: '18px', padding: 'clamp(20px,3vw,28px)', boxShadow: '8px 8px 0 #100C0A', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h2 style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: '22px', margin: 0 }}>
@@ -903,6 +951,8 @@ export default function App() {
               ))
             )}
           </div>
+          </>
+          )}
 
         </main>
       </div>
