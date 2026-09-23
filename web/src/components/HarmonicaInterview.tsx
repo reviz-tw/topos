@@ -286,7 +286,12 @@ export const HarmonicaInterview: React.FC<HarmonicaInterviewProps> = ({ topic, t
       const res = await fetch(`/api/harmonica/sessions/${activeSessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: pId, text }),
+        body: JSON.stringify({
+          participantId: pId,
+          text,
+          turn: nextTurns,
+          history: conversation.messages,
+        }),
       });
 
       const data = await res.json();

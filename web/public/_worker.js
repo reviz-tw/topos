@@ -323,13 +323,19 @@ export default {
           });
         }
 
-        const convs = MEMORY_CONVERSATIONS.get(sessionId) || [];
-        const conv = convs.length > 0 ? convs[convs.length - 1] : null;
+        let convs = MEMORY_CONVERSATIONS.get(sessionId) || [];
+        let conv = convs.length > 0 ? convs[convs.length - 1] : null;
         if (!conv) {
-          return new Response(JSON.stringify({ error: 'conversation not joined' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...getCorsHeaders() },
-          });
+          conv = {
+            participant: 1,
+            alias: '',
+            turns: typeof body.turn === 'number' ? body.turn - 1 : 0,
+            done: false,
+            messages: Array.isArray(body.history) ? body.history : [],
+            updatedAt: Date.now(),
+          };
+          convs.push(conv);
+          MEMORY_CONVERSATIONS.set(sessionId, convs);
         }
 
         // Add participant message
