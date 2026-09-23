@@ -245,6 +245,19 @@ export class HarmonicaLocalStore {
       ];
     }
 
+    if (topicId === 'control-yuan') {
+      return [
+        {
+          sessionId: 'cy-voices-01',
+          title: '監察與考試權公眾訪談',
+          goal: '理解民眾對監察權、考試權存廢的經驗、擔憂與期待。',
+          url: '/s/cy-voices-01',
+          isDefault: true,
+          createdAt: 1790170000,
+        },
+      ];
+    }
+
     return [];
   }
 
@@ -267,17 +280,21 @@ export class HarmonicaLocalStore {
     if (sessionId === '6o0ryapw2o') {
       return {
         sessionId: '6o0ryapw2o',
-        topic: '核電重啟',
-        goal: '測試與收集核電重啟之條件、顧慮與多元考量',
+        topic: '核電重啟公眾訪談',
+        goal: '測試與收集核電重啟之條件、顧慮與多元考量。',
         context: '探討台灣能源轉型與核四重啟之關鍵爭點與各方考量。',
-        questions: ['支持嗎', '要錢嗎', '其他原因'],
+        questions: [
+          '對於核電重啟，你的基本立場是什麼？最在意的是哪一點？',
+          '如果真的要重啟，你認為必須先滿足哪些條件？',
+          '核廢料該怎麼處理，你心中有能接受的做法嗎？',
+        ],
         language: 'zh-Hant',
         status: 'open',
         maxTurns: 6,
         maxParticipants: 50,
         askAlias: true,
-        participants: 1,
-        completed: 0,
+        participants: 2,
+        completed: 1,
         model: '@cf/google/gemma-4-26b-a4b-it',
         adminToken: 'admin-nuclear4-topos',
       };
@@ -286,7 +303,7 @@ export class HarmonicaLocalStore {
     if (sessionId === 'sports-int-1') {
       return {
         sessionId: 'sports-int-1',
-        topic: '捷運與登山口廣設運動驛站',
+        topic: '運動驛站市民訪談',
         goal: '探討公眾對捷運站盥洗寄物設施之需求、衛生管理與預算自償考量',
         context: '台北市長選舉市政政見討論，平衡運動友善與公共治安。',
         questions: [
@@ -306,6 +323,29 @@ export class HarmonicaLocalStore {
       };
     }
 
+    if (sessionId === 'cy-voices-01') {
+      return {
+        sessionId: 'cy-voices-01',
+        topic: '監察與考試權公眾訪談',
+        goal: '理解民眾對監察權、考試權存廢的經驗、擔憂與期待。',
+        context: '五權憲法架構在現代民主體制的運作困境、彈劾與調查權歸屬。',
+        questions: [
+          '你對監察院或考試院的印象是什麼？有沒有具體經驗？',
+          '如果彈劾與調查權移到國會，你最擔心什麼？',
+          '什麼樣的制度設計，會讓你覺得監督是可信的？',
+        ],
+        language: 'zh-Hant',
+        status: 'open',
+        maxTurns: 5,
+        maxParticipants: 50,
+        askAlias: true,
+        participants: 0,
+        completed: 0,
+        model: '@cf/google/gemma-4-26b-a4b-it',
+        adminToken: 'admin-cy-topos',
+      };
+    }
+
     return null;
   }
 
@@ -320,6 +360,36 @@ export class HarmonicaLocalStore {
       const raw = localStorage.getItem(`${this.PREFIX}:conversations:${sessionId}`);
       if (raw) return JSON.parse(raw);
     } catch (_) {}
+
+    if (sessionId === '6o0ryapw2o') {
+      return [
+        {
+          participant: 1,
+          alias: '新北通勤族',
+          turns: 2,
+          done: false,
+          messages: [
+            { role: 'interviewer', text: '你好，新北通勤族！謝謝你願意聊聊「核電重啟公眾訪談」。\n\n第一個問題：對於核電重啟，你的基本立場是什麼？最在意的是哪一點？' },
+            { role: 'participant', text: '我其實不反對，但住在北部，最擔心的是真的出事的時候疏散怎麼辦。' },
+            { role: 'interviewer', text: '你提到「疏散怎麼辦」——可以多說一點嗎？是什麼經驗或資訊讓你這樣想？' },
+            { role: 'participant', text: '福島那時候的畫面吧。新北人口這麼多，塞車就走不了。' },
+            { role: 'interviewer', text: '了解，謝謝你。換個角度：如果真的要重啟，你認為必須先滿足哪些條件？' },
+          ],
+        },
+        {
+          participant: 2,
+          alias: '南部家長',
+          turns: 6,
+          done: true,
+          messages: [
+            { role: 'interviewer', text: '你好，南部家長！謝謝你願意聊聊「核電重啟公眾訪談」。\n\n第一個問題：對於核電重啟，你的基本立場是什麼？最在意的是哪一點？' },
+            { role: 'participant', text: '我比較支持，因為中南部空污真的很嚴重，孩子常常咳嗽。' },
+            { role: 'interviewer', text: '謝謝你花時間把想法說清楚。這些內容會被整理成逐字稿，納入審議分析。如果還有想補充的，隨時可以再開一輪。' },
+          ],
+        },
+      ];
+    }
+
     return [];
   }
 

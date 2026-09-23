@@ -58,6 +58,29 @@ const FALLBACK_TOPICS: Topic[] = [
     ],
   },
   {
+    id: 'control-yuan',
+    category: '憲政體制',
+    title: '台灣是否應該廢除監察院與考試院（走向三權分立）？',
+    description: '探討五權憲法架構在現代民主體制的運作困境、彈劾與調查權歸屬、以及修憲門檻挑戰。',
+    tags: ['憲政體制', '五權憲法', '三權分立', '監察院', '考試院', '國會改革'],
+    keyCruxes: [
+      {
+        title: '彈劾與調查權歸屬',
+        description: '若廢除監察院，彈劾與公務員懲戒權力應移交立法院還是司法機關？',
+        proPoints: [
+          '符合當代主流民主國家三權分立體制',
+          '監察委員常被質疑淪為政黨酬庸與政治工具',
+          '將調查與審計權回歸國會與獨立審計部，提升監督效率',
+        ],
+        conPoints: [
+          '國會若獨攬調查與彈劾權，恐造成立法院擴權、少數執政受癱瘓',
+          '孫中山五權憲法強調監察權獨立於立法權之外，防止國會專制',
+          '立委素質與黨派對立嚴重，未必比獨立監察院更客觀',
+        ],
+      },
+    ],
+  },
+  {
     id: 'sports-station',
     category: '市政空間與體育政策',
     title: '台北市是否應於捷運站與登山口廣設「運動驛站」？',
@@ -97,21 +120,26 @@ const TOPIC_SAMPLE_QUESTIONS: Record<string, Partial<Record<SupportedLanguage, s
       '"If Nuclear 4 is restarted, how do other countries handle nuclear waste?"',
     ],
   },
+  'control-yuan': {
+    'zh-TW': [
+      '「若廢除監察院，彈劾與公務員懲戒權力應移交立法院還是司法機關？」',
+      '「如果彈劾與調查權移到國會，會不會造成立法院擴權、少數執政受癱瘓？」',
+    ],
+    en: [
+      '"If the Control Yuan is abolished, should impeachment powers move to parliament or the judiciary?"',
+      '"Would transferring investigative powers to parliament cause legislative overreach?"',
+    ],
+  },
   'sports-station': {
     'zh-TW': [
       '「在捷運站或登山口設更衣淋浴間，會不會有偷拍或治安死角風險？」',
       '「台北市已有 12 區運動中心與特色運動館，普設運動驛站真的有必要嗎？」',
-      '「過去大安森林公園與板橋田徑場跑站曾因虧損關閉，公營驛站如何永續運作？」',
+      '「過去民間跑站曾因虧損關閉，公營驛站如何永續運作與自負盈虧？」',
     ],
     en: [
       '"Would installing shower hubs at MRT stations create privacy or voyeurism risks?"',
       '"Taipei already has 12 district sports centers; is deploying sports stations really necessary?"',
       '"Given that past private runner stations closed due to deficits, how can public stations remain sustainable?"',
-    ],
-    ja: [
-      '「MRT駅や登山口へのシャワー室設置は、盗撮や防犯上の死角を生むリスクはありませんか？」',
-      '「台北市には既に12区にスポーツセンターがありますが、運動拠点を増設する必要はあるでしょうか？」',
-      '「かつて大安森林公園などにあった民間ランステは採算悪化で閉店しましたが、公設で持続可能でしょうか？」',
     ],
   },
 };
@@ -128,7 +156,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [remainingQuota, setRemainingQuota] = useState<number>(5);
   const [googleClientId, setGoogleClientId] = useState<string>(import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
-  const [activeMode, setActiveMode] = useState<'deliberation' | 'harmonica'>('deliberation');
+  const [activeMode, setActiveMode] = useState<'debate' | 'interview'>('debate');
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS['zh-TW'];
 
@@ -183,8 +211,14 @@ export default function App() {
       .then((res) => res.json())
       .then((data: Topic[]) => {
         if (Array.isArray(data) && data.length > 0) {
-          setTopics(data);
-          setSelectedTopicId(data[0].id);
+          // Merge with fallback topics to ensure all topics exist
+          const merged = [...data];
+          FALLBACK_TOPICS.forEach((fb) => {
+            if (!merged.some((m) => m.id === fb.id)) {
+              merged.push(fb);
+            }
+          });
+          setTopics(merged);
         }
       })
       .catch((err) => console.log('Using fallback topics:', err));
@@ -337,8 +371,12 @@ export default function App() {
   const currentLoadingMessage =
     selectedTopic.id === 'sports-station'
       ? (currentLang === 'zh-TW'
-          ? '審議引導助手正在檢索運動驛站政見、官方評估與市民質性論點並進行中立推理…'
+          ? '審議助手正在檢索運動驛站政見、官方評估與市民質性論點…'
           : 'Topos Facilitator is retrieving debate records and synthesizing balanced insights…')
+      : selectedTopic.id === 'control-yuan'
+      ? (currentLang === 'zh-TW'
+          ? '審議助手正在檢索五權憲法改造公聽會、立院調查權與各界論述…'
+          : 'Topos Facilitator is retrieving constitutional hearing transcripts and arguments…')
       : t.loadingMessage;
 
   const handleSend = async (e: React.FormEvent) => {
@@ -401,15 +439,40 @@ export default function App() {
         setRemainingQuota((prev) => Math.max(0, prev - 1));
       }
     } catch (err: any) {
+      // Local fallback generation from topic cruxes if API is unavailable
+      const matchedCruxes = (selectedTopic.keyCruxes || []).filter((c) =>
+        text.includes(c.title) || (c.proPoints || c.pro || []).some((p) => text.includes(p.slice(0, 4)))
+      );
+      const chosen = matchedCruxes.length > 0 ? matchedCruxes : selectedTopic.keyCruxes || [];
+      const replyLines = [
+        `針對你的問題「${text}」，整理自《${selectedTopic.title}》的關鍵正反論點：`,
+        '',
+      ];
+      chosen.slice(0, 2).forEach((c) => {
+        const p = (c.proPoints || c.pro || [])[0] || '贊同論述';
+        const cn = (c.conPoints || c.con || [])[0] || '擔憂論述';
+        replyLines.push(`【${c.title}】`);
+        replyLines.push(`✓ 正方：${p}`);
+        replyLines.push(`✕ 反方：${cn}`);
+        replyLines.push('');
+      });
+      replyLines.push('審議不是選邊站，是把兩邊證據攤開來看——你怎麼想？');
+
+      const fallbackMsg: ChatMessage = {
+        role: 'assistant',
+        content: replyLines.join('\n'),
+        citations: chosen.slice(0, 2).map((c) => ({
+          sourceTitle: selectedTopic.title,
+          excerpt: (c.proPoints || c.pro || [])[0] || c.title,
+        })),
+      };
+
       setMessagesByTopic((prev) => {
-        const fallbackMsg: ChatMessage = {
-          role: 'assistant',
-          content: `[Topos Facilitator]:\n\n${err.message}`,
-        };
         const updated = { ...prev, [selectedTopic.id]: [...newHistory, fallbackMsg] };
         localStorage.setItem('topos_messages_by_topic', JSON.stringify(updated));
         return updated;
       });
+      setRemainingQuota((prev) => Math.max(0, prev - 1));
     } finally {
       setLoading(false);
     }
@@ -459,6 +522,24 @@ export default function App() {
     fontWeight: 600,
   };
 
+  const modeTabStyle = (active: boolean, color: string): React.CSSProperties => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '4px',
+    textAlign: 'left',
+    padding: '16px 20px',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    color: '#100C0A',
+    border: active ? '2.5px solid #100C0A' : '2px solid rgba(16,12,10,.25)',
+    background: active ? color : '#FFFCF1',
+    boxShadow: active ? '6px 6px 0 #100C0A' : 'none',
+    transform: active ? 'translate(-2px,-2px)' : 'none',
+    transition: 'all .15s ease-out',
+  });
+
   const isGuest = !user || user.token === 'guest-token';
   const isExhausted = remainingQuota <= 0;
   const canSend = !!inputText.trim() && !loading && !viewedSession && !isExhausted;
@@ -469,7 +550,7 @@ export default function App() {
       backgroundColor: '#FFF7E4',
       backgroundImage: 'linear-gradient(90deg, rgba(16,12,10,.04) 1px, transparent 1px), linear-gradient(rgba(16,12,10,.04) 1px, transparent 1px)',
       backgroundSize: '96px 96px',
-      fontFamily: "'Space Grotesk', 'Noto Sans TC', system-ui, sans-serif",
+      fontFamily: "'Space Grotesk', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif",
       color: '#100C0A',
     }}>
       {/* Sticky Header */}
@@ -487,7 +568,7 @@ export default function App() {
         flexWrap: 'wrap',
         gap: '16px',
       }}>
-        {/* Logo & Title */}
+        {/* Brand Logo & Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#FF2E88', border: '1.5px solid #100C0A', marginRight: '-4px', transform: 'translateY(-2px) rotate(-6deg)', zIndex: 4, position: 'relative' }}></span>
@@ -508,9 +589,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right Header Section: Language Switcher + User Auth */}
+        {/* Right Header Section: Language Selector + User Auth */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Language Selector */}
           <LanguageSelector
             currentLang={currentLang}
             onLanguageChange={handleLanguageChange}
@@ -547,22 +627,21 @@ export default function App() {
                 </div>
               ) : (
                 <button
-                  onClick={() => {
-                    alert(t.googleLoginAlert);
-                  }}
-                  title="點擊查看設定說明（或使用左側訪客身份）"
+                  disabled
+                  title="示範環境尚未設定 Google OAuth Client ID"
                   style={{
                     background: '#FFFCF1',
                     color: '#6E5F50',
-                    border: '2px dashed rgba(16,12,10,.4)',
+                    border: '2px solid rgba(16,12,10,.3)',
                     borderRadius: '999px',
-                    padding: '9px 18px',
+                    padding: '10px 18px',
                     fontWeight: 700,
                     fontSize: '13px',
-                    cursor: 'pointer',
+                    cursor: 'not-allowed',
+                    opacity: 0.6,
                   }}
                 >
-                  {t.googleLoginNotConfigured}
+                  Google 登入
                 </button>
               )}
             </div>
@@ -570,10 +649,10 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Grid: Topic Selector + Topic Details/Cruxes + Chat */}
+      {/* Main Layout Container */}
       <div style={{ maxWidth: '1320px', margin: '0 auto', padding: 'clamp(20px,5vw,56px)', display: 'flex', flexWrap: 'wrap', gap: '28px' }}>
         
-        {/* Left: Topic Selector */}
+        {/* Left: Topic Selector Aside */}
         <aside style={{ flex: '1 1 260px', minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#6E5F50' }}>
             {t.pickTopicHeading}
@@ -616,342 +695,282 @@ export default function App() {
           })}
         </aside>
 
-        {/* Right: Main Content */}
+        {/* Right: Main Content (Modes Switcher + Mode Content) */}
         <main style={{ flex: '3 1 480px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-          {/* Topic Hero Card with Cruxes */}
-          <div style={{ background: '#FFFCF1', border: '2.5px solid #100C0A', borderRadius: '18px', padding: 'clamp(20px,3vw,32px)', boxShadow: '8px 8px 0 #100C0A' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '999px', background: selCat.tint, color: selCat.ink, fontSize: '12px', fontWeight: 900, border: `1px solid ${selCat.ink}`, marginBottom: '12px' }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: selCat.dot, display: 'inline-block' }}></span>
-              {selectedTopic.category}
-            </span>
-            <h1 style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 'clamp(26px,3.2vw,40px)', lineHeight: 1.2, margin: '8px 0 12px' }}>
-              {selectedTopic.title}
-            </h1>
-            <p style={{ fontSize: '16px', lineHeight: 1.65, color: '#2A211C', margin: '0 0 20px' }}>
-              {selectedTopic.description}
-            </p>
-            <hr style={{ border: 0, borderTop: '2px dashed rgba(16,12,10,.18)', margin: '0 0 20px' }} />
-
-            <h4 style={{ fontWeight: 900, fontSize: '14px', letterSpacing: '.02em', margin: '0 0 14px' }}>
-              {t.keyCruxesHeading}
-            </h4>
-
-            {/* Cruxes Grid */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-              {selectedTopic.keyCruxes?.map((c, idx) => {
-                const pros = c.proPoints || c.pro || [];
-                const cons = c.conPoints || c.con || [];
-                return (
-                  <article key={idx} style={{ flex: '1 1 280px', minWidth: '250px', background: '#FFF7E4', border: '2px solid #100C0A', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative' }}>
-                    <span style={{ position: 'absolute', top: '-10px', left: '14px', background: '#100C0A', color: '#FFF7E4', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', transform: 'rotate(-2deg)' }}>
-                      §0{idx + 1}
-                    </span>
-                    <h3 style={{ marginTop: '6px', fontWeight: 900, fontSize: '16px', lineHeight: 1.3 }}>
-                      {c.title}
-                    </h3>
-                    <p style={{ fontSize: '13px', color: '#6E5F50', lineHeight: 1.55, margin: 0 }}>
-                      {c.description}
-                    </p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '.04em', color: '#002A45' }}>
-                        {t.proLabel}
-                      </div>
-                      {pros.map((p, pi) => (
-                        <div key={pi} style={proBoxStyle}>{p}</div>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '.04em', color: '#5A0024' }}>
-                        {t.conLabel}
-                      </div>
-                      {cons.map((p, pi) => (
-                        <div key={pi} style={conBoxStyle}>{p}</div>
-                      ))}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Mode Switcher Tabs */}
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+          {/* Top Mode Switcher Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '14px' }}>
             <button
-              onClick={() => setActiveMode('deliberation')}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '10px',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '13px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                border: '2.5px solid #100C0A',
-                background: activeMode === 'deliberation' ? '#100C0A' : '#FFFCF1',
-                color: activeMode === 'deliberation' ? '#FFF7E4' : '#100C0A',
-                boxShadow: activeMode === 'deliberation' ? '4px 4px 0 #FFF1A6' : '3px 3px 0 #100C0A',
-                transition: '0.1s ease',
-                transform: activeMode === 'deliberation' ? 'translate(-1px,-1px)' : 'none',
-              }}
+              onClick={() => setActiveMode('debate')}
+              style={modeTabStyle(activeMode === 'debate', '#FFD400')}
             >
-              {t.tabDeliberation}
-            </button>
-            <button
-              onClick={() => setActiveMode('harmonica')}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '10px',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '13px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                border: '2.5px solid #100C0A',
-                background: activeMode === 'harmonica' ? '#00E5A3' : '#FFFCF1',
-                color: '#100C0A',
-                boxShadow: activeMode === 'harmonica' ? '4px 4px 0 #100C0A' : '3px 3px 0 #100C0A',
-                transition: '0.1s ease',
-                transform: activeMode === 'harmonica' ? 'translate(-1px,-1px)' : 'none',
-              }}
-            >
-              {t.tabHarmonica}
-            </button>
-          </div>
-
-          {activeMode === 'harmonica' ? (
-            <HarmonicaInterview topic={selectedTopic} t={t} apiBase={API_BASE} />
-          ) : (
-            <>
-              {/* Deliberation Chat Facilitator */}
-              <div style={{ background: '#FFFCF1', border: '2.5px solid #100C0A', borderRadius: '18px', padding: 'clamp(20px,3vw,28px)', boxShadow: '8px 8px 0 #100C0A', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h2 style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: '22px', margin: 0 }}>
-                  {t.facilitatorTitle}
-                </h2>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#6E5F50', marginTop: '4px' }}>
-                  {t.facilitatorSubtitle}
-                </div>
-              </div>
-              <span style={{ background: '#100C0A', color: '#FFF7E4', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, padding: '5px 12px', borderRadius: '999px' }}>
-                {isGuest
-                  ? t.guestQuotaLabel(remainingQuota)
-                  : t.memberQuotaLabel(remainingQuota)}
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: 700, letterSpacing: '.16em' }}>
+                MODE 01 · 群體
               </span>
-            </div>
+              <span style={{ fontSize: '17px', fontWeight: 900 }}>觀點思辨與爭點探索</span>
+              <span style={{ fontSize: '12px', fontWeight: 500, lineHeight: 1.5 }}>拆解正反論點，向逐字稿提問</span>
+            </button>
+            <button
+              onClick={() => setActiveMode('interview')}
+              style={modeTabStyle(activeMode === 'interview', '#6FE83A')}
+            >
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: 700, letterSpacing: '.16em' }}>
+                MODE 02 · 個人
+              </span>
+              <span style={{ fontSize: '17px', fontWeight: 900 }}>一對一 AI 訪談</span>
+              <span style={{ fontSize: '12px', fontWeight: 500, lineHeight: 1.5 }}>補訪審議裡缺席的聲音</span>
+            </button>
+          </div>
 
-            {/* If viewing history banner */}
-            {viewedSession && (
-              <div style={{ background: '#FFF1A6', border: '2px solid #100C0A', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#3A2D00' }}>
-                <span>{t.reviewingBanner(viewedSession.dateLabel)}</span>
-                <button
-                  onClick={() => setViewingSessionId(null)}
-                  style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '5px 12px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
-                >
-                  {t.backToCurrentDialogue}
-                </button>
-              </div>
-            )}
+          {/* MODE 01: 群體觀點思辨 */}
+          {activeMode === 'debate' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Selected Topic Hero Card with Cruxes */}
+              <div style={{ background: '#FFFCF1', border: '2.5px solid #100C0A', borderRadius: '18px', padding: 'clamp(20px,3vw,32px)', boxShadow: '8px 8px 0 #100C0A' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '999px', background: selCat.tint, color: selCat.ink, fontSize: '12px', fontWeight: 900, border: `1px solid ${selCat.ink}`, marginBottom: '12px' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: selCat.dot, display: 'inline-block' }}></span>
+                  {selectedTopic.category}
+                </span>
+                <h1 style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 'clamp(26px,3.2vw,40px)', lineHeight: 1.2, margin: '8px 0 12px' }}>
+                  {selectedTopic.title}
+                </h1>
+                <p style={{ fontSize: '16px', lineHeight: 1.65, color: '#2A211C', margin: '0 0 20px' }}>
+                  {selectedTopic.description}
+                </p>
+                <hr style={{ border: 0, borderTop: '2px dashed rgba(16,12,10,.18)', margin: '0 0 20px' }} />
 
-            {/* Chat message bubbles */}
-            <div style={{ minHeight: '220px', maxHeight: '440px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 2px' }}>
-              {activeMessages.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#6E5F50', fontSize: '14px', marginTop: '30px', lineHeight: 1.8 }}>
-                  <div>{t.emptyChatPrompt}</div>
-                  <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
-                    {currentSampleQuestions.map((q, qi) => (
-                      <span
-                        key={qi}
-                        onClick={() => {
-                          if (!loading && !viewedSession && !isExhausted) {
-                            setInputText(q.replace(/^[「"«]+|[」"»]+$/g, ''));
-                          }
-                        }}
-                        style={{
-                          cursor: 'pointer',
-                          background: '#FFF7E4',
-                          border: '1px solid rgba(16,12,10,.25)',
-                          borderRadius: '6px',
-                          padding: '4px 10px',
-                          fontSize: '12px',
-                          color: '#100C0A',
-                          maxWidth: '90%',
-                          transition: 'all 0.1s ease',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#100C0A')}
-                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(16,12,10,.25)')}
-                      >
-                        {q}
-                      </span>
-                    ))}
-                  </div>
+                <h4 style={{ fontWeight: 900, fontSize: '14px', letterSpacing: '.02em', margin: '0 0 14px' }}>
+                  {t.keyCruxesHeading}
+                </h4>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                  {selectedTopic.keyCruxes?.map((c, idx) => {
+                    const pros = c.proPoints || c.pro || [];
+                    const cons = c.conPoints || c.con || [];
+                    return (
+                      <article key={idx} style={{ flex: '1 1 280px', minWidth: '250px', background: '#FFF7E4', border: '2px solid #100C0A', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', top: '-10px', left: '14px', background: '#100C0A', color: '#FFF7E4', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', transform: 'rotate(-2deg)' }}>
+                          §0{idx + 1}
+                        </span>
+                        <h3 style={{ marginTop: '6px', fontWeight: 900, fontSize: '16px', lineHeight: 1.3 }}>
+                          {c.title}
+                        </h3>
+                        <p style={{ fontSize: '13px', color: '#6E5F50', lineHeight: 1.55, margin: 0 }}>
+                          {c.description}
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '.04em', color: '#002A45' }}>
+                            {t.proLabel}
+                          </div>
+                          {pros.map((p, pi) => (
+                            <div key={pi} style={proBoxStyle}>{p}</div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 900, letterSpacing: '.04em', color: '#5A0024' }}>
+                            {t.conLabel}
+                          </div>
+                          {cons.map((p, pi) => (
+                            <div key={pi} style={conBoxStyle}>{p}</div>
+                          ))}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
-              {activeMessages.map((m, i) => {
-                const isUser = m.role === 'user';
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isUser ? 'flex-end' : 'flex-start',
-                      gap: '4px',
-                    }}
-                  >
-                    <div style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#6E5F50', fontWeight: 700 }}>
-                      {isUser ? (user?.name || t.userLabel) : t.facilitatorLabel}
+              {/* Deliberation Chat Facilitator Card */}
+              <div style={{ background: '#FFFCF1', border: '2.5px solid #100C0A', borderRadius: '18px', padding: 'clamp(20px,3vw,28px)', boxShadow: '8px 8px 0 #100C0A', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h2 style={{ fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: '22px', margin: 0 }}>
+                      {t.facilitatorTitle}
+                    </h2>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#6E5F50', marginTop: '4px' }}>
+                      {t.facilitatorSubtitle}
                     </div>
-                    <div
+                  </div>
+                  <span style={{ background: '#100C0A', color: '#FFF7E4', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', fontWeight: 700, padding: '5px 12px', borderRadius: '999px' }}>
+                    {isGuest ? t.guestQuotaLabel(remainingQuota) : t.memberQuotaLabel(remainingQuota)}
+                  </span>
+                </div>
+
+                {viewedSession && (
+                  <div style={{ background: '#FFF1A6', border: '2px solid #100C0A', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '13px', fontWeight: 700, color: '#3A2D00' }}>
+                    <span>{t.reviewingBanner(viewedSession.dateLabel)}</span>
+                    <button
+                      onClick={() => setViewingSessionId(null)}
+                      style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '5px 12px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      {t.backToCurrentDialogue}
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ minHeight: '220px', maxHeight: '440px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 2px' }}>
+                  {activeMessages.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#6E5F50', fontSize: '14px', marginTop: '40px', lineHeight: 1.8 }}>
+                      {t.emptyChatPrompt}<br />
+                      {currentSampleQuestions.map((q, i) => (
+                        <React.Fragment key={i}>
+                          <span
+                            onClick={() => {
+                              if (!loading && !viewedSession && !isExhausted) {
+                                setInputText(q.replace(/^[「"«]+|[」"»]+$/g, ''));
+                              }
+                            }}
+                            style={{ cursor: 'pointer', textDecoration: 'underline', color: '#100C0A', display: 'inline-block', margin: '2px 0' }}
+                          >
+                            {q}
+                          </span>
+                          <br />
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  ) : (
+                    activeMessages.map((m, i) => {
+                      const isUser = m.role === 'user';
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            alignSelf: isUser ? 'flex-end' : 'flex-start',
+                            maxWidth: '82%',
+                            background: isUser ? '#100C0A' : '#FFFCF1',
+                            color: isUser ? '#FFF7E4' : '#100C0A',
+                            border: isUser ? '2px solid #100C0A' : '2px solid rgba(16,12,10,.18)',
+                            borderRadius: '10px',
+                            padding: '12px 16px',
+                            fontSize: '14px',
+                            lineHeight: 1.65,
+                            whiteSpace: 'pre-wrap',
+                            boxShadow: isUser ? '4px 4px 0 #100C0A' : 'none',
+                          }}
+                        >
+                          <div>{m.content}</div>
+                          {m.citations && m.citations.length > 0 && (
+                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(16,12,10,.18)', fontSize: '12px' }}>
+                              <strong>{t.citationSource}</strong>
+                              {m.citations.map((c, ci) => (
+                                <div key={ci} style={{ marginTop: '4px', fontStyle: 'italic', color: '#6E5F50' }}>
+                                  • {c.sourceTitle ? `${c.sourceTitle}：「${c.excerpt}」` : c.excerpt}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                  {loading && (
+                    <div style={{ color: '#002A45', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', animation: 'topos-pulse 1.1s ease-in-out infinite' }}>
+                      {currentLoadingMessage}
+                    </div>
+                  )}
+                </div>
+
+                {!viewedSession && (
+                  <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      disabled={loading || !!viewedSession || (isGuest && isExhausted)}
+                      placeholder={
+                        viewedSession
+                          ? t.inputPlaceholderReviewing
+                          : isGuest && isExhausted
+                          ? t.inputPlaceholderExhausted
+                          : t.inputPlaceholderNormal
+                      }
+                      style={{ flex: '1 1 200px', minHeight: '48px', padding: '0 16px', borderRadius: '999px', border: '2px solid #100C0A', background: '#FFF7E4', color: '#100C0A', fontSize: '14px', outline: 'none' }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!canSend}
                       style={{
-                        maxWidth: '85%',
-                        padding: '14px 18px',
-                        borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                        border: '2px solid #100C0A',
-                        background: isUser ? '#100C0A' : '#FFF7E4',
-                        color: isUser ? '#FFF7E4' : '#100C0A',
-                        fontSize: '14px',
-                        lineHeight: 1.65,
-                        whiteSpace: 'pre-wrap',
-                        boxShadow: '3px 3px 0 #100C0A',
+                        minHeight: '48px', padding: '0 24px', borderRadius: '999px', border: '2px solid #100C0A',
+                        fontWeight: 900, cursor: canSend ? 'pointer' : 'not-allowed',
+                        background: canSend ? '#100C0A' : '#F2E5C4',
+                        color: canSend ? '#FFF7E4' : '#6E5F50',
+                        boxShadow: canSend ? '4px 4px 0 #100C0A' : 'none',
                       }}
                     >
-                      {m.content}
-                    </div>
+                      {t.sendButton}
+                    </button>
+                  </form>
+                )}
 
-                    {/* Grounded Citations */}
-                    {m.citations && m.citations.length > 0 && (
-                      <div style={{ maxWidth: '85%', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {m.citations.map((c, ci) => (
-                          <div
-                            key={ci}
-                            style={{
-                              background: '#FFF1A6',
-                              border: '1.5px solid #100C0A',
-                              borderRadius: '8px',
-                              padding: '6px 10px',
-                              fontSize: '11px',
-                              color: '#3A2D00',
-                            }}
-                          >
-                            <span style={{ fontWeight: 800 }}>{t.citationSource}{c.sourceTitle}</span>
-                            <div style={{ fontStyle: 'italic', marginTop: '2px', color: '#5A4600' }}>
-                              「{c.excerpt}」
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {loading && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6E5F50', fontSize: '13px', fontStyle: 'italic', margin: '10px 0' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF2E88', animation: 'topos-pulse 1s infinite' }} />
-                  {currentLoadingMessage}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  {currentLiveMessages.length > 0 && !viewedSession ? (
+                    <button
+                      onClick={archiveSession}
+                      style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '8px 16px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      {t.archiveButton}
+                    </button>
+                  ) : <div />}
+                  {!user && (
+                    <span style={{ fontSize: '12px', color: '#6E5F50' }}>
+                      {t.guestNotice}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {/* Input bar */}
-            {!viewedSession && (
-              <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  disabled={loading || (isGuest && isExhausted)}
-                  placeholder={
-                    viewedSession
-                      ? t.inputPlaceholderReviewing
-                      : isGuest && isExhausted
-                      ? t.inputPlaceholderExhausted
-                      : t.inputPlaceholderNormal
-                  }
-                  style={{ flex: '1 1 200px', minHeight: '48px', padding: '0 16px', borderRadius: '999px', border: '2px solid #100C0A', background: '#FFF7E4', color: '#100C0A', fontSize: '14px', outline: 'none' }}
-                />
-                <button
-                  type="submit"
-                  disabled={!canSend}
-                  style={{
-                    minHeight: '48px',
-                    padding: '0 24px',
-                    borderRadius: '999px',
-                    border: '2px solid #100C0A',
-                    fontWeight: 900,
-                    cursor: canSend ? 'pointer' : 'not-allowed',
-                    background: canSend ? '#100C0A' : '#F2E5C4',
-                    color: canSend ? '#FFF7E4' : '#6E5F50',
-                    boxShadow: canSend ? '4px 4px 0 #100C0A' : 'none',
-                  }}
-                >
-                  {t.sendButton}
-                </button>
-              </form>
-            )}
-
-            {/* Bottom action row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              {currentLiveMessages.length > 0 && !viewedSession ? (
-                <button
-                  onClick={archiveSession}
-                  style={{ border: '2px solid #100C0A', background: '#FFFCF1', padding: '8px 16px', borderRadius: '999px', fontWeight: 900, fontSize: '12px', cursor: 'pointer' }}
-                >
-                  {t.archiveButton}
-                </button>
-              ) : <div></div>}
-              {!user && (
-                <span style={{ fontSize: '12px', color: '#6E5F50' }}>
-                  {t.guestNotice}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* History Panel */}
-          <div style={{ background: '#FFFCF1', border: '2px solid #100C0A', borderRadius: '14px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <h4 style={{ fontWeight: 900, fontSize: '13px', letterSpacing: '.02em', margin: 0 }}>
-              {t.historyHeading}
-            </h4>
-            {historyList.length === 0 ? (
-              <div style={{ fontSize: '13px', color: '#6E5F50' }}>
-                {t.historyEmpty}
               </div>
-            ) : (
-              historyList.map((h) => (
-                <div
-                  key={h.id}
-                  onClick={() => setViewingSessionId(h.id)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    background: viewingSessionId === h.id ? '#FFF1A6' : '#FFF7E4',
-                    border: viewingSessionId === h.id ? '2px solid #100C0A' : '1.5px solid rgba(16,12,10,.18)',
-                    boxShadow: viewingSessionId === h.id ? '4px 4px 0 #100C0A' : 'none',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#6E5F50' }}>
-                      {h.dateLabel}
-                    </div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '2px' }}>
-                      {h.firstQuestion}
-                    </div>
+
+              {/* History Panel */}
+              <div style={{ background: '#FFFCF1', border: '2px solid #100C0A', borderRadius: '14px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h4 style={{ fontWeight: 900, fontSize: '13px', letterSpacing: '.02em', margin: 0 }}>
+                  {t.historyHeading}
+                </h4>
+                {historyList.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: '#6E5F50' }}>
+                    {t.historyEmpty}
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-          </>
+                ) : (
+                  historyList.map((h) => {
+                    const isViewing = viewingSessionId === h.id;
+                    return (
+                      <div
+                        key={h.id}
+                        onClick={() => setViewingSessionId(h.id)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: isViewing ? '#FFF1A6' : '#FFF7E4',
+                          border: isViewing ? '2px solid #100C0A' : '1.5px solid rgba(16,12,10,.18)',
+                          boxShadow: isViewing ? '4px 4px 0 #100C0A' : 'none',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#6E5F50' }}>
+                            {h.dateLabel}
+                          </div>
+                          <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '2px' }}>
+                            {h.firstQuestion}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* MODE 02: 一對一 AI 訪談 (Harmonica) */}
+          {activeMode === 'interview' && (
+            <HarmonicaInterview topic={selectedTopic} t={t} apiBase={API_BASE} />
           )}
 
         </main>

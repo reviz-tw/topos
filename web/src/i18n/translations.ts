@@ -664,7 +664,7 @@ export interface TopicTranslation {
   keyCruxes: Crux[];
 }
 
-export const TOPIC_TRANSLATIONS: Record<string, Record<SupportedLanguage, TopicTranslation>> = {
+export const TOPIC_TRANSLATIONS: Record<string, Partial<Record<SupportedLanguage, TopicTranslation>>> = {
   nuclear4: {
     'zh-TW': {
       category: '能源政策',
@@ -1293,5 +1293,51 @@ export const TOPIC_TRANSLATIONS: Record<string, Record<SupportedLanguage, TopicT
               }
           ]
       }
-  }
+  },
+  'control-yuan': {
+    'zh-TW': {
+      category: '憲政體制',
+      title: '台灣是否應該廢除監察院與考試院（走向三權分立）？',
+      description: '探討五權憲法架構在現代民主體制的運作困境、彈劾與調查權歸屬、以及修憲門檻挑戰。',
+      tags: ['憲政體制', '五權憲法', '三權分立', '監察院', '考試院', '國會改革'],
+      keyCruxes: [
+        {
+          title: '彈劾與調查權歸屬',
+          description: '若廢除監察院，彈劾與公務員懲戒權力應移交立法院還是司法機關？',
+          proPoints: [
+            '符合當代主流民主國家三權分立體制',
+            '監察委員常被質疑淪為政黨酬庸與政治工具',
+            '將調查與審計權回歸國會與獨立審計部，提升監督效率',
+          ],
+          conPoints: [
+            '國會若獨攬調查與彈劾權，恐造成立法院擴權、少數執政受癱瘓',
+            '孫中山五權憲法強調監察權獨立於立法權之外，防止國會專制',
+            '立委素質與黨派對立嚴重，未必比獨立監察院更客觀',
+          ],
+        },
+      ],
+    },
+    en: {
+      category: 'Constitutional System',
+      title: 'Should Taiwan Abolish the Control Yuan & Examination Yuan (Move to Three Branches)?',
+      description: 'Exploring modern democratic challenges of the five-power constitution, distribution of impeachment/investigation powers, and constitutional reform.',
+      tags: ['Constitution', 'Separation of Powers', 'Control Yuan', 'Parliamentary Reform'],
+      keyCruxes: [
+        {
+          title: 'Distribution of Impeachment and Investigative Powers',
+          description: 'If the Control Yuan is abolished, should impeachment and disciplinary powers transfer to the Legislature or the Judiciary?',
+          proPoints: [
+            'Aligns with mainstream democratic separation of three powers',
+            'Control Yuan members are often scrutinized as partisan patronage',
+            'Returning oversight and audit to parliament improves democratic efficiency',
+          ],
+          conPoints: [
+            'Concentrating impeachment in parliament may cause legislative overreach',
+            'Five-power doctrine separates investigative power from legislation to prevent parliamentary tyranny',
+            'Partisan polarization among legislators may hinder objective scrutiny',
+          ],
+        },
+      ],
+    },
+  },
 };
